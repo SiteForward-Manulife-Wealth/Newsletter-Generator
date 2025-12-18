@@ -962,7 +962,7 @@ const app = new Vue({
       
       try {
         sendInfo("Loading Posts");
-        const data = await fetchWithCorsProxy(`${url}/feed.xml`);
+        const data = await fetchWithFallback(`${url}/feed.xml`);
         const doc = new DOMParser().parseFromString(data, "application/xml");
         
         // Check for XML parsing errors
@@ -1085,7 +1085,7 @@ const app = new Vue({
       
       try {
         sendInfo("Loading Posts");
-        const data = await fetchWithCorsProxy(url);
+        const data = await fetchWithFallback(url);
         const post = { style: {} };
         const doc = new DOMParser().parseFromString(data, "text/html");
 
@@ -1197,7 +1197,7 @@ const app = new Vue({
       }
       
       try {
-        const data = await fetchWithCorsProxy(websiteURL);
+        const data = await fetchWithFallback(websiteURL);
         
         //Look for analytics code
         const analyticsCode = data.match(/UA-\w*-1/g);
@@ -1604,17 +1604,106 @@ function fetchWithTimeout(url, options = {}, timeout = 10000) {
   ]);
 }
 
-//Fetch with CORS bypass using AllOrigins proxy
-async function fetchWithCorsProxy(url, timeout = 15000) {
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const response = await fetchWithTimeout(proxyUrl, {}, timeout);
+//Fetch with automatic CORS bypass fallback if needed
+async function fetchWithFallback(url, timeout = 15000) {
+  // Try to convert HTTP to HTTPS first
+  let urlToFetch = url;
+  const isHttp = url.startsWith('http://');
   
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  if (isHttp) {
+    urlToFetch = url.replace('http://', 'https://');
   }
   
-  const jsonData = await response.json();
-  return jsonData.contents;
+  // Try direct fetch first (no CORS proxy)
+  try {
+    const response = await fetchWithTimeout(urlToFetch, {}, timeout);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.text();
+  } catch (error) {
+    console.log('Direct fetch failed, trying CORS proxies:', error.message);
+    
+    // List of CORS proxy services to try as fallbacks
+    const proxies = [
+      // AllOrigins
+      (url) => ({ url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, isJson: true }),
+      // Corsproxy.io
+      (url) => ({ url: `https://corsproxy.io/?${encodeURIComponent(url)}`, isJson: false }),
+    ];
+    
+    // Try each proxy service
+    for (let i = 0; i < proxies.length; i++) {
+      try {
+        const { url: proxyUrl, isJson } = proxies[i](urlToFetch);
+        const response = await fetchWithTimeout(proxyUrl, {}, timeout);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Handle different response formats
+        if (isJson) {
+          const jsonData = await response.json();
+          return jsonData.contents;
+        } else {
+          return await response.text();
+        }
+      } catch (proxyError) {
+        console.log(`Proxy ${i + 1} failed for ${urlToFetch}:`, proxyError.message);
+        
+        // If this is the last proxy and we converted from HTTP, try original HTTP URL
+        if (i === proxies.length - 1 && isHttp) {
+          console.log(`All HTTPS attempts failed, falling back to HTTP: ${url}`);
+          
+          // Try direct HTTP fetch first
+          try {
+            const response = await fetchWithTimeout(url, {}, timeout);
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return await response.text();
+          } catch (httpDirectError) {
+            console.log('Direct HTTP fetch failed, trying HTTP with proxies');
+            
+            // Try proxies with HTTP
+            for (let j = 0; j < proxies.length; j++) {
+              try {
+                const { url: proxyUrl, isJson } = proxies[j](url);
+                const response = await fetchWithTimeout(proxyUrl, {}, timeout);
+                
+                if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                if (isJson) {
+                  const jsonData = await response.json();
+                  return jsonData.contents;
+                } else {
+                  return await response.text();
+                }
+              } catch (httpProxyError) {
+                console.log(`HTTP proxy ${j + 1} failed:`, httpProxyError.message);
+                if (j === proxies.length - 1) {
+                  throw httpProxyError;
+                }
+              }
+            }
+          }
+        }
+        
+        // If not the last proxy, continue to next one
+        if (i < proxies.length - 1) continue;
+        
+        // If all proxies failed, throw the last error
+        throw proxyError;
+      }
+    }
+  }
 }
 
 //Safe localStorage operations
