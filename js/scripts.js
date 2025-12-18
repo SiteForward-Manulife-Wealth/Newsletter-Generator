@@ -1701,7 +1701,6 @@ function safeLocalStorageGet(key) {
   try {
     return localStorage.getItem(key);
   } catch (error) {
-    console.error('localStorage.getItem failed:', error);
     return null;
   }
 }
@@ -1711,7 +1710,6 @@ function safeLocalStorageSet(key, value) {
     localStorage.setItem(key, value);
     return true;
   } catch (error) {
-    console.error('localStorage.setItem failed:', error);
     sendError('Unable to save to browser storage. You may be in private browsing mode.');
     return false;
   }
@@ -1722,7 +1720,6 @@ function safeLocalStorageRemove(key) {
     localStorage.removeItem(key);
     return true;
   } catch (error) {
-    console.error('localStorage.removeItem failed:', error);
     return false;
   }
 }
