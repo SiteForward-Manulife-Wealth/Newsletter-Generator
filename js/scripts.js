@@ -1004,11 +1004,11 @@ const app = new Vue({
               }
 
               //Create the blog post item, and add it to the list (sanitized)
-              post.title = `<h2>${sanitizeHTML(title)}</h2>`;
-              post.date = `<p>${sanitizeHTML(date)}</p>`;
-              post.link = sanitizeHTML(link);
-              post.img = img ? sanitizeHTML(img) : null;
-              post.desc = `<p>${sanitizeHTML(desc)}</p>`;
+              post.title = `<h2>${title}</h2>`;
+              post.date = `<p>${date}</p>`;
+              post.link = link;
+              post.img = img ? img : null;
+              post.desc = `<p>${desc}</p>`;
               newPosts.push(post);
             } catch (itemError) {
               console.error("Error parsing RSS item:", itemError);
@@ -1102,7 +1102,7 @@ const app = new Vue({
         if (desc && desc[desc.length - 1].match(/\W/g))
           desc = desc.substr(0, desc.length - 1);
         if (desc) desc += "...";
-        post.desc = `<p>${sanitizeHTML(desc)}</p>`;
+        post.desc = `<p>${desc}</p>`;
 
         //Get the rest of the values as they will be found (sanitized)
         const postElement = doc.querySelector(".post");
@@ -1116,15 +1116,15 @@ const app = new Vue({
         }
         
         const postTitle = postTitleElement.innerHTML;
-        post.title = `<h2>${sanitizeHTML(postTitle)}</h2>`;
-        post.link = sanitizeHTML(url);
+        post.title = `<h2>${postTitle}</h2>`;
+        post.link = url;
         
         const postMeta = postElement.querySelector(".post-meta");
         if (postMeta) {
           const timeElement = postMeta.querySelector("time");
           if (timeElement) {
             const postDate = timeElement.innerHTML;
-            post.date = `<p>${sanitizeHTML(postDate)}</p>`;
+            post.date = `<p>${postDate}</p>`;
           }
         }
 
@@ -1569,17 +1569,6 @@ function delay(fn, ms) {
 function sendInfo(msg) {
   app.$snotify.info(msg);
   console.log(`Info: ${msg}`);
-}
-
-//Sanitize HTML content using DOMPurify
-function sanitizeHTML(html) {
-  if (typeof DOMPurify !== 'undefined') {
-    return DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 'strong', 'em', 'u', 'br', 'span', 'div', 'img', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'tbody', 'thead'],
-      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'style', 'class', 'target', 'width', 'height', 'align']
-    });
-  }
-  return html; // Fallback if DOMPurify not loaded
 }
 
 //Validate URL format
