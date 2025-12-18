@@ -160,6 +160,7 @@
                         <table
                           valign="top"
                           class="no-borders"
+                          :class="{'skeleton-preview': post.skeleton}"
                           width="800"
                           style="align-items: left; display: inline-block; border-collapse: separate"
                           border="0"
@@ -169,7 +170,20 @@
                         >
                           <!-- 'box-shadow': post.shadow != null ? post.shadow ? '0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23)' : '' : styles.post.shadow ? '0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23)' : '', -->
 
-                          <tr>
+                          <tr v-if="post.skeleton">
+                            <!-- Skeleton preview post -->
+                            <td width="200" valign="top" style="display: inline-block; padding: 10px 10px 10px 10px">
+                              <div class="skeleton-loader" style="width: 200px; height: 120px;"></div>
+                            </td>
+                            <td width="560" style="display: inline-block; padding: 10px 10px 20px 10px; font-family: 'Muli', Helvetica, sans-serif">
+                              <div class="skeleton-loader" style="height: 24px; width: 60%; margin-bottom: 8px;"></div>
+                              <div class="skeleton-loader" style="height: 14px; width: 100%; margin-bottom: 4px;"></div>
+                              <div class="skeleton-loader" style="height: 14px; width: 100%; margin-bottom: 4px;"></div>
+                              <div class="skeleton-loader" style="height: 14px; width: 85%;"></div>
+                            </td>
+                          </tr>
+
+                          <tr v-else>
                             <!-- If image in post -->
                             <td v-if="post.img" width="200" valign="top" style="display: inline-block; padding: 10px 10px 10px 10px">
                               <!-- <div style="background-position: center center; background-repeat: no-repeat; background-size: contain; height: 200px; width: 100%" height="200px" width="100%"  :style="{'background-image': 'url('+post.img+')'}"> -->
@@ -679,7 +693,7 @@
                   <label for="footer-html">Footer Content </label>
                 </div>
                 <p class="smallerText">
-                  Want to edit the template content? Click <a href="#" @click="importFooterTemplateIntoCustom()">here</a> to copy the code and add it into the custom section.<br />
+                  Want to edit the template content? Click <a href="#" @click.prevent="importFooterTemplateIntoCustom">here</a> to copy the code and add it into the custom section.<br />
                   <strong>Warning:</strong> This WILL overwrite anything in the custom section</p>
               </div>
             </div>
@@ -820,8 +834,28 @@
                 <li v-if="posts.length == 0">
                   <p>No Posts Loaded</p>
                 </li>
+                <!-- Skeleton Loader for Loading State -->
                 <li
                   v-for="(post, pos) in posts"
+                  v-if="post.skeleton"
+                  class="card skeleton-post"
+                  style="margin-bottom: 10px"
+                  :key="'skeleton-'+pos"
+                >
+                  <div class="post">
+                    <div class="skeleton-loader skeleton-post-image"></div>
+                    <div class="data">
+                      <div class="skeleton-loader skeleton-post-title"></div>
+                      <div class="skeleton-loader skeleton-post-text"></div>
+                      <div class="skeleton-loader skeleton-post-text"></div>
+                      <div class="skeleton-loader skeleton-post-date"></div>
+                    </div>
+                  </div>
+                </li>
+                <!-- Regular Post -->
+                <li
+                  v-for="(post, pos) in posts"
+                  v-if="!post.skeleton"
                   class="card"
                   :class='{light: isLight(getPostStyle(pos, "backgroundColor"))}'
                   style="margin-bottom: 10px"

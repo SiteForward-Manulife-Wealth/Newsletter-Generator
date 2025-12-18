@@ -929,6 +929,12 @@ const app = new Vue({
       
       this.loading.posts = true;
       
+      // Add skeleton loaders to show loading state
+      const skeletonCount = Math.min(this.$refs.loadPostsCount.value, 5);
+      for (let i = 0; i < skeletonCount; i++) {
+        this.posts.push({ skeleton: true });
+      }
+      
       try {
         sendInfo("Loading Posts");
         // Remove trailing slash from URL to prevent double slashes
@@ -956,6 +962,7 @@ const app = new Vue({
         const maxCount = this.$refs.loadPostsCount.value;
 
         //For every blog found get the values and create a blog item
+        const newPosts = [];
         items.forEach((item, i) => {
           if (i < maxCount) {
             try {
@@ -1002,17 +1009,22 @@ const app = new Vue({
               post.link = sanitizeHTML(link);
               post.img = img ? sanitizeHTML(img) : null;
               post.desc = `<p>${sanitizeHTML(desc)}</p>`;
-              this.posts.push(post);
+              newPosts.push(post);
             } catch (itemError) {
               console.error("Error parsing RSS item:", itemError);
               // Continue with next item
             }
           }
         });
+        
+        // Remove skeleton loaders
+        this.posts = this.posts.filter(post => !post.skeleton);
+        // Add actual posts
+        this.posts.push(...newPosts);
 
         //Inform user if posts were found
-        if (this.posts.length > 0) {
-          sendSuccess(`Loaded ${this.posts.length} post(s)`);
+        if (newPosts.length > 0) {
+          sendSuccess(`Loaded ${newPosts.length} post(s)`);
         } else {
           sendError("No posts were found, make sure you're not using the RSS Feed");
         }
@@ -1024,6 +1036,8 @@ const app = new Vue({
           event_value: maxCount,
         });
       } catch (error) {
+        // Remove skeleton loaders on error
+        this.posts = this.posts.filter(post => !post.skeleton);
         sendError("Unable to load URL", error);
       } finally {
         this.loading.posts = false;
@@ -1314,18 +1328,48 @@ const app = new Vue({
 
     //Add footer template HTML into custom footer
     importFooterTemplateIntoCustom() {
-      setTimeout(()=>{
-        app.settings.footer.style = 1
-        console.log("setting footer style to "+this.settings.footer.style)
+      // First, switch to custom footer style and wait for render
+      this.settings.footer.style = 2;
+      
+      this.$nextTick(() => {
+        // Ensure TinyMCE is initialized for the footer-html element
+        const footerEditor = document.getElementById('footer-html');
+        if (footerEditor) {
+          // Trigger mouseover to initialize TinyMCE if not already initialized
+          const mouseoverEvent = new Event('mouseover');
+          footerEditor.dispatchEvent(mouseoverEvent);
+        }
         
-      setTimeout(()=>{
-        console.log(app.$refs.newsletter.querySelector(".newsletter-footer").outerHTML)
-        app.settings.footer.html = app.$refs.newsletter.querySelector(".newsletter-footer").outerHTML
-        app.settings.footer.style = '2'
-        app.forceRerender();
-        sendSuccess("Footer template has been imported into the custom section.")
-      }, 1)
-    }, 1)
+        // Wait for TinyMCE to initialize (increased delay for reliability)
+        setTimeout(() => {
+          // Temporarily switch to template style to get the HTML
+          this.settings.footer.style = 1;
+          
+          this.$nextTick(() => {
+            const footerElement = this.$refs.newsletter.querySelector(".newsletter-footer");
+            if (footerElement) {
+              const footerHTML = footerElement.outerHTML;
+              console.log("Captured footer HTML:", footerHTML);
+              
+              // Switch back to custom and set the HTML
+              this.settings.footer.style = 2;
+              this.settings.footer.html = footerHTML;
+              
+              this.$nextTick(() => {
+                // Update TinyMCE content if editor is initialized
+                const editor = tinymce.get('footer-html');
+                if (editor) {
+                  editor.setContent(footerHTML);
+                }
+                
+                sendSuccess("Footer template has been imported into the custom section.");
+              });
+            } else {
+              sendError("Could not find footer template element");
+            }
+          });
+        }, 500); // Give TinyMCE time to initialize
+      });
     }
   },
   updated() {
@@ -1717,7 +1761,7 @@ if (!String.prototype.splice) {
   };
 }
 
-function getDataUrl(e, cb) {
+function getDataUrl(e, cb, progressCb = null) {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   const img = new Image();
@@ -1726,12 +1770,31 @@ function getDataUrl(e, cb) {
     canvas.width = img.width;
     canvas.height = img.height;
     ctx.drawImage(img, 0, 0);
+    if (progressCb) progressCb(100);
     cb(canvas.toDataURL());
+  };
+  
+  img.onerror = () => {
+    console.error('Failed to load image:', e.src);
+    if (progressCb) progressCb(-1); // Indicate error
   };
 
   img.setAttribute("crossOrigin", "Anonymous");
   // Using AllOrigins as CORS proxy
   img.src = `https://api.allorigins.win/raw?url=${encodeURIComponent(e.src)}`;
+  
+  // Simulate progress for images (since we can't get actual progress from CORS proxy)
+  if (progressCb) {
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 10;
+      if (progress >= 90) {
+        clearInterval(interval);
+      } else {
+        progressCb(progress);
+      }
+    }, 100);
+  }
 }
 
 function downloadInnerHtml(filename, elId, mimeType = "text/plain") {
