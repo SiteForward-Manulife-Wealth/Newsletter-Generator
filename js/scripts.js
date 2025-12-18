@@ -41,8 +41,7 @@ Vue.component("editable", {
   props: ["value"],
   data() {
     return {
-      focusHandler: null,
-      clickHandler: null,
+      mouseoverHandler: null,
       editorInitialized: false,
       initTimeout: null,
     };
@@ -72,7 +71,6 @@ Vue.component("editable", {
           // Add initialization callback to track state
           tinyMCE_settings_clone.init_instance_callback = (editor) => {
             this.editorInitialized = true;
-            editor.focus();
           };
           
           tinymce.init(tinyMCE_settings_clone);
@@ -85,17 +83,12 @@ Vue.component("editable", {
     const el = this.$el;
     el.innerHTML = typeof this.value === "undefined" ? "" : this.value;
     
-    // Use focus and click events instead of mouseover for better UX
-    this.focusHandler = () => {
+    // Use mouseover for lazy loading
+    this.mouseoverHandler = () => {
       this.initializeEditor();
     };
     
-    this.clickHandler = () => {
-      this.initializeEditor();
-    };
-    
-    el.addEventListener("focus", this.focusHandler);
-    el.addEventListener("click", this.clickHandler);
+    el.addEventListener("mouseover", this.mouseoverHandler);
   },
   beforeDestroy() {
     // Clear any pending initialization
@@ -103,12 +96,9 @@ Vue.component("editable", {
       clearTimeout(this.initTimeout);
     }
     
-    // Remove event listeners if they still exist
-    if (this.focusHandler) {
-      this.$el.removeEventListener("focus", this.focusHandler);
-    }
-    if (this.clickHandler) {
-      this.$el.removeEventListener("click", this.clickHandler);
+    // Remove event listener if it still exists
+    if (this.mouseoverHandler) {
+      this.$el.removeEventListener("mouseover", this.mouseoverHandler);
     }
     
     // Destroy TinyMCE editor instance
@@ -510,34 +500,13 @@ const app = new Vue({
       }, 1);
     },
     // PHP Banner Generation - Commented Out
+    // PHP Banner Generation - Commented Out
     // banner: {
     //   handler(val) {
     //     this.updateCreatedBanner();
     //   },
     //   deep: true,
     // },
-    "settings.header.style": function(newVal) {
-      // When custom header (style 3) is selected, initialize TinyMCE
-      if (newVal === 3) {
-        this.$nextTick(() => {
-          const headerEditor = document.getElementById('header-html');
-          if (headerEditor && !tinymce.get('header-html')) {
-            headerEditor.click();
-          }
-        });
-      }
-    },
-    "settings.footer.style": function(newVal) {
-      // When custom footer (style 2) is selected, initialize TinyMCE
-      if (newVal === 2) {
-        this.$nextTick(() => {
-          const footerEditor = document.getElementById('footer-html');
-          if (footerEditor && !tinymce.get('footer-html')) {
-            footerEditor.click();
-          }
-        });
-      }
-    },
   },
   mounted() {
     document.querySelector(".preview-body").classList.add("loaded");
@@ -1607,7 +1576,7 @@ function fetchWithTimeout(url, options = {}, timeout = 10000) {
 }
 
 //Fetch with automatic CORS bypass fallback if needed
-async function fetchWithFallback(url, timeout = 15000) {
+async function fetchWithFallback(url, timeout = 5000) {
   // Try to convert HTTP to HTTPS first
   let urlToFetch = url;
   const isHttp = url.startsWith('http://');
