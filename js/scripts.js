@@ -1,6 +1,6 @@
-let siteForwardNewsletterTemplate = ''
+const siteForwardNewsletterTemplate = '';
 
-let tinyMCE_settings = {
+const tinyMCE_settings = {
   selector: ".editable",
   menubar: false,
   inline: true,
@@ -37,25 +37,90 @@ let tinyMCE_settings = {
 };
 
 Vue.component("editable", {
-  template: '<div class="editable" @input="updateInput"></div>',
+  template: '<div class="editable" @input="updateInput" tabindex="0"></div>',
   props: ["value"],
+  data() {
+    return {
+      mouseoverHandler: null,
+      editorInitialized: false,
+      initTimeout: null,
+    };
+  },
   methods: {
     updateInput(e) {
       if (tinymce.get(this.$el.id) != null)
         this.$emit("input", tinymce.get(this.$el.id).getContent());
     },
+    initializeEditor() {
+      // Prevent double initialization
+      if (this.editorInitialized || tinymce.get(this.$el.id)) {
+        return;
+      }
+      
+      // Debounce initialization to prevent rapid triggers
+      if (this.initTimeout) {
+        clearTimeout(this.initTimeout);
+      }
+      
+      this.initTimeout = setTimeout(() => {
+        const el = this.$el;
+        if (tinymce.get(el.id) === null) {
+          try {
+            const tinyMCE_settings_clone = Object.assign({}, tinyMCE_settings);
+            tinyMCE_settings_clone.selector = `#${el.id}`;
+            
+            // Add initialization callback to track state
+            tinyMCE_settings_clone.init_instance_callback = (editor) => {
+              this.editorInitialized = true;
+            };
+            
+            tinymce.init(tinyMCE_settings_clone);
+          } catch (error) {
+            // Silently fail if TinyMCE initialization fails
+            this.editorInitialized = false;
+          }
+        }
+        this.initTimeout = null;
+      }, 100); // 100ms debounce
+    },
   },
   mounted() {
-    let el = this.$el;
-    el.innerHTML = typeof this.value == "undefined" ? "" : this.value;
-    let tinyMCE_settings_clone = Object.assign({}, tinyMCE_settings);
-    tinyMCE_settings_clone.selector = "#" + el.id;
-    let mouseover = el.addEventListener("mouseover", function(){
-      if (tinymce.get(el.id) == null){
-        tinymce.init(tinyMCE_settings_clone)
+    const el = this.$el;
+    el.innerHTML = typeof this.value === "undefined" ? "" : this.value;
+    
+    // Use mouseover for lazy loading
+    this.mouseoverHandler = () => {
+      this.initializeEditor();
+    };
+    
+    el.addEventListener("mouseover", this.mouseoverHandler);
+  },
+  beforeDestroy() {
+    // Clear any pending initialization
+    if (this.initTimeout) {
+      clearTimeout(this.initTimeout);
+      this.initTimeout = null;
+    }
+    
+    // Remove event listener if it still exists
+    if (this.mouseoverHandler && this.$el) {
+      this.$el.removeEventListener("mouseover", this.mouseoverHandler);
+      this.mouseoverHandler = null;
+    }
+    
+    // Destroy TinyMCE editor instance
+    if (this.$el && this.$el.id) {
+      try {
+        const editor = tinymce.get(this.$el.id);
+        if (editor) {
+          editor.remove();
+        }
+      } catch (error) {
+        // Silently fail if editor removal fails
       }
-      e.removeEventListener(mouseover)
-    })
+    }
+    
+    this.editorInitialized = false;
   },
 });
 
@@ -67,20 +132,44 @@ Vue.component("popup", {
   data: function () {
     return {
       isOpen: false,
+      openHandler: null,
+      closeHandlers: [],
     };
   },
   mounted() {
-    let el = this.$el;
-    el.querySelector("i").addEventListener("click", function (event) {
+    const el = this.$el;
+    
+    this.openHandler = () => {
       el.classList.add("open");
-    });
+    };
+    
+    const openIcon = el.querySelector("i");
+    openIcon.addEventListener("click", this.openHandler);
+    
     el.querySelectorAll(".popup-outerWrapper, .popup-close i").forEach(
       (item) => {
-        item.addEventListener("click", function (event) {
-          if (event.target == item) el.classList.remove("open");
-        });
+        const closeHandler = (event) => {
+          if (event.target === item) el.classList.remove("open");
+        };
+        this.closeHandlers.push({ element: item, handler: closeHandler });
+        item.addEventListener("click", closeHandler);
       }
     );
+  },
+  beforeDestroy() {
+    // Clean up open handler
+    if (this.openHandler) {
+      const openIcon = this.$el.querySelector("i");
+      if (openIcon) {
+        openIcon.removeEventListener("click", this.openHandler);
+      }
+    }
+    
+    // Clean up close handlers
+    this.closeHandlers.forEach(({ element, handler }) => {
+      element.removeEventListener("click", handler);
+    });
+    this.closeHandlers = [];
   },
 });
 
@@ -106,6 +195,10 @@ Vue.component("slider", {
       //Emit input event to trigger v-model
       this.$emit("input", this.val);
     },
+  },
+  beforeDestroy() {
+    // Clear any cached DOM references
+    this.val = 0;
   },
 });
 
@@ -191,9 +284,13 @@ Vue.component("searchbar", {
       }
     },
   },
+  beforeDestroy() {
+    // Clear cached references
+    this.defaultHTML = null;
+  },
 });
 
-var updateResizeHandle = new Event("updateresizehandle");
+const updateResizeHandle = new Event("updateresizehandle");
 Vue.component("resizehandle", {
   template: '<div class="resize-handle" @mousedown="down"></div>',
   props: ["othercontainer", "mincontainer", "minother"],
@@ -210,9 +307,9 @@ Vue.component("resizehandle", {
       document.querySelector("body").style = "";
     },
     move(e) {
-      var parent = this.$el.parentNode;
-      var otherContainer = document.querySelector(this.othercontainer);
-      var width = parent.offsetWidth - (e.clientX - parent.offsetLeft);
+      const parent = this.$el.parentNode;
+      const otherContainer = document.querySelector(this.othercontainer);
+      let width = parent.offsetWidth - (e.clientX - parent.offsetLeft);
 
       width = Math.min(window.innerWidth - this.minother, width);
       width = Math.max(this.mincontainer, width);
@@ -220,8 +317,8 @@ Vue.component("resizehandle", {
       this.updateWidths(width);
     },
     updateWidths(width) {
-      var parent = this.$el.parentNode;
-      var otherContainer = document.querySelector(this.othercontainer);
+      const parent = this.$el.parentNode;
+      const otherContainer = document.querySelector(this.othercontainer);
 
       if (
         !parent.classList.contains("closed") &&
@@ -229,26 +326,16 @@ Vue.component("resizehandle", {
       ) {
         if (!Number.isInteger(width)) width = parent.offsetWidth;
 
-        parent.style = "width: " + width + "; transition: none";
-        var sidebarWidth = app.app.sidebarStuck ? "260" : "80";
-        otherContainer.style =
-          "width: calc(calc(100% - " +
-          sidebarWidth +
-          "px) - " +
-          width +
-          "px); transition: none;";
+        parent.style = `width: ${width}px; transition: none`;
+        const sidebarWidth = app.app.sidebarStuck ? "260" : "80";
+        otherContainer.style = `width: calc(calc(100% - ${sidebarWidth}px) - ${width}px); transition: none;`;
 
-        setTimeout(function () {
-          parent.style = "width: " + width;
-          otherContainer.style =
-            "width: calc(calc(100% - " +
-            sidebarWidth +
-            "px) - " +
-            width +
-            "px);";
+        setTimeout(() => {
+          parent.style = `width: ${width}px`;
+          otherContainer.style = `width: calc(calc(100% - ${sidebarWidth}px) - ${width}px);`;
         }, 1);
       }
-      setTimeout(function () {
+      setTimeout(() => {
         if (
           parent.classList.contains("closed") ||
           parent.classList.contains("large")
@@ -262,19 +349,32 @@ Vue.component("resizehandle", {
   mounted() {
     document.addEventListener("updateresizehandle", this.updateWidths);
   },
+  beforeDestroy() {
+    // Clean up event listener
+    document.removeEventListener("updateresizehandle", this.updateWidths);
+    
+    // Clean up any active mousemove/mouseup listeners
+    document.removeEventListener("mousemove", this.move);
+    document.removeEventListener("mouseup", this.up);
+  },
 });
 
-let app = new Vue({
+const app = new Vue({
   el: "#body-wrapper",
   props: {},
   data: {
     renderKey: 0,
     posts: [],
     newsletterHTML: "",
+    loading: {
+      posts: false,
+      template: false,
+      newsletter: false,
+      analytics: false,
+    },
     app: {
       sidebarHover: false,
       sidebarStuck: false,
-      wordSupport: false,
       activeView: "setup",
       silentToggle: [],
       forceRerender: false,
@@ -356,30 +456,31 @@ let app = new Vue({
         },
       },
     },
-    bannerCreationTimer: null,
-    banner: {
-      align: "center center",
-      image: null,
-      title: null,
-      titleSize: 30,
-      subtitle: null,
-      subtitleSize: 17,
-      titleSpacing: 20,
-      textAlign: "center",
-      color: "#000000",
-      offsetY: 0,
-      offsetX: 0,
-      logo: null,
-      logoX: 0,
-      logoY: 0,
-      logoWidth: 300,
-      shadowColor: "#333333",
-      shadowEnabled: false,
-      shadowOffsetX: 1,
-      shadowOffsetY: 1,
-      shadowBlur: 5,
-      displayGrid: false,
-    },
+    // PHP Banner Generation - Commented Out
+    // bannerCreationTimer: null,
+    // banner: {
+    //   align: "center center",
+    //   image: null,
+    //   title: null,
+    //   titleSize: 30,
+    //   subtitle: null,
+    //   subtitleSize: 17,
+    //   titleSpacing: 20,
+    //   textAlign: "center",
+    //   color: "#000000",
+    //   offsetY: 0,
+    //   offsetX: 0,
+    //   logo: null,
+    //   logoX: 0,
+    //   logoY: 0,
+    //   logoWidth: 300,
+    //   shadowColor: "#333333",
+    //   shadowEnabled: false,
+    //   shadowOffsetX: 1,
+    //   shadowOffsetY: 1,
+    //   shadowBlur: 5,
+    //  displayGrid: false,
+    // },
     stylesBackup: {},
   },
   computed: {
@@ -391,12 +492,6 @@ let app = new Vue({
   watch: {
     "app.sidebarStuck": function () {
       document.dispatchEvent(updateResizeHandle);
-    },
-    "app.wordSupport": function () {
-      if (!this.app.silentToggle.includes("app.wordSupport"))
-        sendInfo(
-          "Word support turned " + (this.app.wordSupport ? "on" : "off")
-        );
     },
 
     //On view change
@@ -410,7 +505,7 @@ let app = new Vue({
         //If changed to any of the following close the preview window
         if (
           activeView == "help" ||
-          activeView == "banner" ||
+          // activeView == "banner" || // PHP Banner Generation - Commented Out
           activeView == "settings"
           // || activeView == "load"
         )
@@ -418,18 +513,20 @@ let app = new Vue({
         else preview.classList.remove("closed");
       }, 1);
     },
-    banner: {
-      handler(val) {
-        this.updateCreatedBanner();
-      },
-      deep: true,
-    },
+    // PHP Banner Generation - Commented Out
+    // PHP Banner Generation - Commented Out
+    // banner: {
+    //   handler(val) {
+    //     this.updateCreatedBanner();
+    //   },
+    //   deep: true,
+    // },
   },
   mounted() {
     document.querySelector(".preview-body").classList.add("loaded");
     this.stylesBackup = JSON.parse(JSON.stringify(this.styles));
 
-    var style = document.createElement("style");
+    const style = document.createElement("style");
     this.$refs.newsletter.prepend(style);
     
     this.$snotify.confirm("For quicker startup please choose one of the options below.", "Newsletter Design Generator", {
@@ -440,7 +537,6 @@ let app = new Vue({
         {
           text: "Start from Scratch",
           action: (toast) => {
-            console.log("Nothing Done")
             this.$snotify.remove(toast.id);
             document.querySelector(".snotify-backdrop").remove()
           }
@@ -475,72 +571,77 @@ let app = new Vue({
     //Update settings to ensure no error on load
     updateData() {
       //Update useDisclaimer
-      if (typeof this.footer.preset.useDisclaimer == "undefined")
-        this.$set(this.footer.preset, "useDisclaimer", true);
+      if (typeof this.settings.footer.preset.useDisclaimer !== "undefined")
+        this.$set(this.settings.footer.preset, "useDisclaimer", true);
 
-      //Update Post Colours
-      if (typeof this.colors.posts == "undefined")
-        this.$set(this.colors, "posts", {});
-      if (typeof this.colors.posts.background == "undefined")
-        this.$set(this.colors.posts, "background", "#f3f3f3");
-      if (typeof this.colors.posts.text == "undefined")
-        this.$set(this.colors.posts, "text", "#000000");
+      //Update Post Colours - legacy migration (colors is now styles)
+      if (typeof this.styles.post === "undefined")
+        this.$set(this.styles, "post", {});
+      if (typeof this.styles.post.backgroundColor === "undefined")
+        this.$set(this.styles.post, "backgroundColor", "#f3f3f3");
+      if (typeof this.styles.post.textColor === "undefined")
+        this.$set(this.styles.post, "textColor", "#000000");
 
       //Update Header
-      if (typeof this.header.titles == "undefined")
-        this.$set(this.header, "titles", {});
-      if (typeof this.header.title != "undefined") {
-        this.$set(this.header.titles, "title", this.header.title);
-        delete this.header.title;
+      if (typeof this.settings.header.titles === "undefined")
+        this.$set(this.settings.header, "titles", {});
+      if (typeof this.settings.header.title !== "undefined") {
+        this.$set(this.settings.header.titles, "title", this.settings.header.title);
+        delete this.settings.header.title;
       }
-      if (typeof this.header.subtitle != "undefined") {
-        this.$set(this.header.titles, "subtitle", this.header.subtitle);
-        delete this.header.subtitle;
+      if (typeof this.settings.header.subtitle !== "undefined") {
+        this.$set(this.settings.header.titles, "subtitle", this.settings.header.subtitle);
+        delete this.settings.header.subtitle;
       }
 
       //Update Disclaimer
-      if (typeof this.footer.preset.useDisclaimer != "undefined")
-        this.$set(this.footer.preset, "disclaimer", {});
-      if (typeof this.footer.preset.disclaimer.enable == "undefined")
-        this.$set(this.footer.preset.disclaimer, "enable", true);
-      delete this.footer.preset.useDisclaimer;
+      if (typeof this.settings.footer.preset.useDisclaimer !== "undefined") {
+        this.$set(this.settings.footer.preset, "disclaimer", {});
+        delete this.settings.footer.preset.useDisclaimer;
+      }
+      
+      if (typeof this.settings.footer.preset.disclaimer === "undefined")
+        this.$set(this.settings.footer.preset, "disclaimer", {});
+        
+      if (typeof this.settings.footer.preset.disclaimer.enable === "undefined")
+        this.$set(this.settings.footer.preset.disclaimer, "enable", true);
 
-      if (typeof this.footer.preset.disclaimer.insuranceOBA == "undefined")
-        this.$set(this.footer.preset.disclaimer, "insuranceOBA", null);
+      if (typeof this.settings.footer.preset.disclaimer.insuranceOBA === "undefined")
+        this.$set(this.settings.footer.preset.disclaimer, "insuranceOBA", null);
 
-      if (typeof this.footer.preset.disclaimer.licenses == "undefined")
-        this.$set(this.footer.preset.disclaimer, "licenses", {});
+      if (typeof this.settings.footer.preset.disclaimer.licenses === "undefined")
+        this.$set(this.settings.footer.preset.disclaimer, "licenses", {});
 
-      if (typeof this.footer.preset.disclaimer.licenses.mfda == "undefined")
-        this.$set(this.footer.preset.disclaimer.licenses, "mfda", false);
-      if (typeof this.footer.preset.disclaimer.licenses.iiroc == "undefined")
-        this.$set(this.footer.preset.disclaimer.licenses, "iiroc", false);
+      if (typeof this.settings.footer.preset.disclaimer.licenses.mfda === "undefined")
+        this.$set(this.settings.footer.preset.disclaimer.licenses, "mfda", false);
+      if (typeof this.settings.footer.preset.disclaimer.licenses.iiroc === "undefined")
+        this.$set(this.settings.footer.preset.disclaimer.licenses, "iiroc", false);
 
-      if (typeof this.footer.preset.disclaimer.logo == "undefined")
-        this.$set(this.footer.preset.disclaimer, "logo", true);
+      if (typeof this.settings.footer.preset.disclaimer.logo === "undefined")
+        this.$set(this.settings.footer.preset.disclaimer, "logo", true);
 
-      if (typeof this.colors.background == "undefined")
-        this.$set(this.colors, "background", "#ffffff");
+      if (typeof this.styles.backgroundColor === "undefined")
+        this.$set(this.styles, "backgroundColor", "#ffffff");
 
-      if (typeof this.header.borderColor == "undefined")
-        this.$set(this.header, "borderColor", "#111111");
+      if (typeof this.styles.header === "undefined")
+        this.$set(this.styles, "header", {});
+        
+      if (typeof this.styles.header.borderColor === "undefined")
+        this.$set(this.styles.header, "borderColor", "#111111");
 
-      if (typeof this.header.borderWidth == "undefined")
-        this.$set(this.header, "borderWidth", 0);
+      if (typeof this.styles.header.borderWidth === "undefined")
+        this.$set(this.styles.header, "borderWidth", 0);
 
-      if (typeof this.styles.post == "undefined")
+      if (typeof this.styles.post === "undefined")
         this.$set(this.styles, "post", {});
 
-      if (typeof this.styles.post.borderRadius == "undefined")
+      if (typeof this.styles.post.borderRadius === "undefined")
         this.$set(this.styles.post, "borderRadius", 0);
 
-      if (typeof this.styles.button == "undefined")
-        this.$set(this.styles, "button", {});
-
-      if (typeof this.styles.button.align == "undefined")
-        this.$set(this.styles.button, "align", "left");
-      if (typeof this.styles.button.width == "undefined")
-        this.$set(this.styles.button, "width", 30);
+      if (typeof this.styles.post.buttonAlign === "undefined")
+        this.$set(this.styles.post, "buttonAlign", "left");
+      if (typeof this.styles.post.buttonWidth === "undefined")
+        this.$set(this.styles.post, "buttonWidth", 30);
     },
     get(obj, path) {
       return path.split(".").reduce(function (o, x) {
@@ -569,90 +670,93 @@ let app = new Vue({
       schema[pathSplit[pathSplitLength - 1]] = value;
     },
 
-    //Download custom tool banner
-    downloadCustomBanner() {
-      //Create canvas
-      let canvas = document.createElement("canvas");
-      let ctx = canvas.getContext("2d");
-      let img = new Image();
+    // PHP Banner Generation - Commented Out
+    // //Download custom tool banner
+    // downloadCustomBanner() {
+    //   //Create canvas
+    //   let canvas = document.createElement("canvas");
+    //   let ctx = canvas.getContext("2d");
+    //   let img = new Image();
 
-      //When image load - draw image, get URL
-      img.onload = function () {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-        let url = canvas.toDataURL();
+    //   //When image load - draw image, get URL
+    //   img.onload = function () {
+    //     canvas.width = img.width;
+    //     canvas.height = img.height;
+    //     ctx.drawImage(img, 0, 0);
+    //     let url = canvas.toDataURL();
 
-        //Create link to download image
-        var div = document.createElement("div"),
-          anch = document.createElement("a");
-        document.body.appendChild(div);
-        div.appendChild(anch);
+    //     //Create link to download image
+    //     var div = document.createElement("div"),
+    //       anch = document.createElement("a");
+    //     document.body.appendChild(div);
+    //     div.appendChild(anch);
 
-        anch.innerHTML = "&nbsp;";
-        div.style.width = "0";
-        div.style.height = "0";
-        anch.href = url;
-        anch.download = "Custom-Banner.png";
+    //     anch.innerHTML = "&nbsp;";
+    //     div.style.width = "0";
+    //     div.style.height = "0";
+    //     anch.href = url;
+    //     anch.download = "Custom-Banner.png";
 
-        //Trigger click event on link
-        var ev = new MouseEvent("click", {});
-        anch.dispatchEvent(ev);
-        document.body.removeChild(div);
-        document.body.removeChild(canvas);
+    //     //Trigger click event on link
+    //     var ev = new MouseEvent("click", {});
+    //     anch.dispatchEvent(ev);
+    //     document.body.removeChild(div);
+    //     document.body.removeChild(canvas);
 
-        //Send analytics call
-        gtag("event", "Tools", {
-          event_category: "Custom Banner",
-          event_label: url,
-        });
-      };
+    //     //Send analytics call
+    //     gtag("event", "Tools", {
+    //       event_category: "Custom Banner",
+    //       event_label: url,
+    //     });
+    //   };
 
-      //Enable crossOrigin - set image src
-      img.setAttribute("crossOrigin", "anonymous");
-      img.src = app.$refs.bannerCreatedImage.src.replace(
-        "&displayGrid=true",
-        ""
-      );
-    },
+    //   //Enable crossOrigin - set image src
+    //   img.setAttribute("crossOrigin", "anonymous");
+    //   img.src = app.$refs.bannerCreatedImage.src.replace(
+    //     "&displayGrid=true",
+    //     ""
+    //   );
+    // },
 
-    //Update the tool banner
-    updateCreatedBanner() {
-      //If an image is provided
-      if (this.banner.image) {
-        //If currently on cooldown - reset cooldown
-        if (this.bannerCreationTimer) clearTimeout(this.bannerCreationTimer);
-        this.bannerCreationTimer = setTimeout(() => {
-          sendInfo("Loading custom banner image");
+    // PHP Banner Generation - Commented Out
+    // //Update the tool banner
+    // updateCreatedBanner() {
+    //   //If an image is provided
+    //   if (this.banner.image) {
+    //     //If currently on cooldown - reset cooldown
+    //     if (this.bannerCreationTimer) clearTimeout(this.bannerCreationTimer);
+    //     this.bannerCreationTimer = setTimeout(() => {
+    //       sendInfo("Loading custom banner image");
 
-          //Create Banner URL with settings
-          let url = "https://banner.newsletter.siteforward.ca/?createNew=true";
-          for (let [key, value] of Object.entries(app.banner)) {
-            if (key == "color" || key == "shadowColor")
-              value = value.substring(1);
-            if (key == "align") {
-              let aligns = value.split(" ");
-              url +=
-                "&horizontalAlign=" + aligns[1] + "&verticalAlign=" + aligns[0];
-            } else if (value != null && value != 0 && value != false)
-              url += "&" + key + "=" + value;
-          }
+    //       //Create Banner URL with settings
+    //       let url = "https://banner.newsletter.siteforward.ca/?createNew=true";
+    //       for (const [key, value] of Object.entries(app.banner)) {
+    //         let processedValue = value;
+    //         if (key === "color" || key === "shadowColor")
+    //           processedValue = value.substring(1);
+    //         if (key === "align") {
+    //           const aligns = value.split(" ");
+    //           url += `&horizontalAlign=${aligns[1]}&verticalAlign=${aligns[0]}`;
+    //         } else if (processedValue !== null && processedValue !== 0 && processedValue !== false)
+    //           url += `&${key}=${processedValue}`;
+    //       }
 
-          //Load the image from the url
-          app.$refs.bannerValidWrapper.classList.add("loading");
-          app.$refs.bannerCreatedImage.src = url;
-          app.$refs.bannerCreatedImage.onload = function () {
-            sendSuccess("Custom banner image loaded");
-            app.$refs.bannerValidWrapper.style.display = "block";
-            app.$refs.bannerValidWrapper.classList.remove("loading");
-          };
-        }, 500);
-      }
-    },
+    //       //Load the image from the url
+    //       app.$refs.bannerValidWrapper.classList.add("loading");
+    //       app.$refs.bannerCreatedImage.src = url;
+    //       app.$refs.bannerCreatedImage.onload = () => {
+    //         sendSuccess("Custom banner image loaded");
+    //         app.$refs.bannerValidWrapper.style.display = "block";
+    //         app.$refs.bannerValidWrapper.classList.remove("loading");
+    //       };
+    //     }, 500);
+    //   }
+    // },
     //Load posts
     loadPosts(posts) {
-      if ((!posts || posts.target) && localStorage.posts)
-        posts = JSON.parse(localStorage.posts);
+      const storedPosts = safeLocalStorageGet('posts');
+      if ((!posts || posts.target) && storedPosts)
+        posts = JSON.parse(storedPosts);
 
       if (!posts || posts.target) sendError("Unable to load posts");
       else {
@@ -662,32 +766,33 @@ let app = new Vue({
       }
 
       if (this.posts) {
-        this.posts.forEach((i) => {
+        this.posts.forEach((post) => {
           if (
-            i.title &&
-            i.title.indexOf("<") != 0 &&
-            i.title.lastIndexOf(">") != i.title.length - 1
+            post.title &&
+            post.title.indexOf("<") !== 0 &&
+            post.title.lastIndexOf(">") !== post.title.length - 1
           )
-            i.title = "<h2>" + i.title + "</h2>";
+            post.title = `<h2>${post.title}</h2>`;
           if (
-            i.date &&
-            i.date.indexOf("<") != 0 &&
-            i.date.lastIndexOf(">") != i.date.length - 1
+            post.date &&
+            post.date.indexOf("<") !== 0 &&
+            post.date.lastIndexOf(">") !== post.date.length - 1
           )
-            i.date = "<p>" + i.date + "</p>";
+            post.date = `<p>${post.date}</p>`;
           if (
-            i.desc &&
-            i.desc.indexOf("<") != 0 &&
-            i.desc.lastIndexOf(">") != i.desc.length - 1
+            post.desc &&
+            post.desc.indexOf("<") !== 0 &&
+            post.desc.lastIndexOf(">") !== post.desc.length - 1
           )
-            i.desc = "<p>" + i.desc + "</p>";
+            post.desc = `<p>${post.desc}</p>`;
         });
       }
     },
 
     loadNewsletter(file) {
-      if ((!file || file.target) && localStorage.newsletter)
-        file = JSON.parse(localStorage.newsletter);
+      const storedNewsletter = safeLocalStorageGet('newsletter');
+      if ((!file || file.target) && storedNewsletter)
+        file = JSON.parse(storedNewsletter);
       if (!file || file.target) sendError("Unable to load newsletter");
       else {
         if (file.options.loadPosts)
@@ -715,37 +820,72 @@ let app = new Vue({
     //Save Posts and Options
     saveNewsletter(overwrite) {
       if (overwrite == null || overwrite == undefined) overwrite = false;
-      if (!overwrite && localStorage.getItem("newsletter"))
+      const storedNewsletter = safeLocalStorageGet("newsletter");
+      if (!overwrite && storedNewsletter)
         if (
           !confirm("Do you want to overwrite your currently saved newsletter?")
         ) {
           sendInfo("Didn't Save Newsletter");
           return;
         }
-      localStorage.setItem("newsletter", this.newsletterAsJSON());
-      sendSuccess("Newsletter Saved");
+      if (safeLocalStorageSet("newsletter", this.newsletterAsJSON())) {
+        sendSuccess("Newsletter Saved");
+      }
     },
 
-    //! Doesn't work cause it can't load images
     downloadPDF() {
-      // var tempDiv = document.createElement("div");
-      // tempDiv.innerHTML = this.$refs.newsletter.outerHTML;
-      // document.body.append(tempDiv);
-      // tempDiv.querySelectorAll('img').forEach(e =>{
-      //   getDataUrl(e, url => {
-      //     console.log(url);
-      //     e.src = url;
-      //   });
-      // });
-      // setTimeout(function(){
-
-      var doc = new jsPDF();
-      doc.html(document.getElementById("newsletterwrapper"), {
-        callback: function (doc) {
-          doc.save("Newsletter - " + this.newsletter.previewText + ".pdf");
-        },
+      sendInfo('Preparing newsletter for PDF export...');
+      
+      // Use Vue's $nextTick to ensure DOM is fully rendered
+      this.$nextTick(() => {
+        const element = this.$refs.newsletter;
+        const filename = `Newsletter - ${this.newsletter.previewText || 'Export'}.pdf`;
+        
+        const opt = {
+          margin: [10, 2, 10, 2],
+          filename: filename,
+          image: { 
+            type: 'jpeg', 
+            quality: 0.98 
+          },
+          html2canvas: { 
+            scale: 1.5,
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+            width: 800,
+            windowWidth: 800,
+            x: -5,
+            y: 0,
+            scrollX: 0,
+            scrollY: -window.scrollY,
+            backgroundColor: '#ffffff',
+            imageTimeout: 0,
+            removeContainer: true
+          },
+          jsPDF: { 
+            unit: 'mm', 
+            format: 'a4', 
+            orientation: 'portrait',
+            compress: true,
+            hotfixes: ['px_scaling']
+          },
+          pagebreak: { 
+            mode: ['avoid-all', 'css', 'legacy']
+          }
+        };
+        
+        sendInfo('Generating PDF... This may take a moment. Images may not appear due to security restrictions.');
+        
+        html2pdf().set(opt).from(element).save()
+          .then(() => {
+            sendSuccess('PDF downloaded successfully. Note: External images may not appear in the PDF due to browser security.');
+          })
+          .catch((error) => {
+            console.error('PDF Error:', error);
+            sendError('Failed to generate PDF. Please try again.', error);
+          });
       });
-      // }, 5000);
     },
     newsletterAsJSON() {
       return JSON.stringify({
@@ -794,6 +934,12 @@ let app = new Vue({
       loadJSONFile((d) => this.loadOptions(d));
     },
     loadTemplate() {
+      if (this.loading.template) {
+        sendInfo("Already loading template...");
+        return;
+      }
+      
+      this.loading.template = true;
       sendInfo("Loading Template...");
       fetch("templates/Newsletter - Template 1.json")
         .then(res => res.json())
@@ -801,193 +947,318 @@ let app = new Vue({
           this.loadNewsletter(data);
         })
         .catch(error => sendError("Unable to load template. ", error))
+        .finally(() => {
+          this.loading.template = false;
+        });
     },
 
     //Load posts from blog page url
-    loadPostsFromURL() {
-      var url = this.$refs.loadPosts.value;
-      if (!url || url.length < 0) sendError("Invalid load Page's URL");
-      else {
+    async loadPostsFromURL() {
+      let url = this.$refs.loadPosts.value;
+      if (!url || url.length < 0) {
+        sendError("Invalid load Page's URL");
+        return;
+      }
+      
+      // Validate URL format
+      try {
+        url = validateFetchURL(url);
+      } catch (error) {
+        sendError(error.message);
+        return;
+      }
+      
+      if (this.loading.posts) {
+        sendInfo("Already loading posts...");
+        return;
+      }
+      
+      this.loading.posts = true;
+      
+      // Add skeleton loaders to show loading state
+      const skeletonCount = Math.min(this.$refs.loadPostsCount.value, 5);
+      for (let i = 0; i < skeletonCount; i++) {
+        this.posts.push({ skeleton: true });
+      }
+      
+      try {
         sendInfo("Loading Posts");
-        fetch(url + "/feed.xml")
-          .then((res) => res.text())
-          .then((data) => {
-            let doc = new DOMParser().parseFromString(data, "application/xml");
-            //Search through the XML for the nodes
-            let channels = doc.querySelector("channel");
-            let items = channels.querySelectorAll("item");
-            let maxCount = this.$refs.loadPostsCount.value;
+        // Remove trailing slash from URL to prevent double slashes
+        const cleanUrl = url.replace(/\/$/, '');
+        const data = await fetchWithFallback(`${cleanUrl}/feed.xml`);
+        const doc = new DOMParser().parseFromString(data, "application/xml");
+        
+        // Check for XML parsing errors
+        const parserError = doc.querySelector("parsererror");
+        if (parserError) {
+          throw new Error("Invalid XML format in RSS feed");
+        }
+        
+        //Search through the XML for the nodes
+        const channels = doc.querySelector("channel");
+        if (!channels) {
+          throw new Error("No channel found in RSS feed");
+        }
+        
+        const items = channels.querySelectorAll("item");
+        if (!items || items.length === 0) {
+          throw new Error("No posts found in RSS feed");
+        }
+        
+        const maxCount = this.$refs.loadPostsCount.value;
 
-            //For every blog found get the values and create a blog item
-            items.forEach((item, i) => {
-              if (i < maxCount) {
-                let post = { style: {} };
-                //Remove the prefix of the node values
-                let title = item.querySelector("title").innerHTML;
-                let titlePrefix = "<![CDATA[";
+        //For every blog found get the values and create a blog item
+        const newPosts = [];
+        items.forEach((item, i) => {
+          if (i < maxCount) {
+            try {
+              const post = { style: {} };
+              //Remove the prefix of the node values
+              const titleElement = item.querySelector("title");
+              if (!titleElement) return;
+              
+              let title = titleElement.innerHTML;
+              const titlePrefix = "<![CDATA[";
 
-                title = title.substr(
-                  titlePrefix.length,
-                  title.length - 3 - titlePrefix.length
-                );
-                let link = item.querySelector("link").innerHTML;
-                let img = item.getElementsByTagName("media:thumbnail")[0];
-                if (img) img = img.attributes[0].nodeValue;
-                let desc = item.querySelector("description");
-                if (desc) {
-                  desc = desc.innerHTML;
-                  desc = desc.substr(
-                    titlePrefix.length,
-                    desc.length - 3 - titlePrefix.length
-                  );
-                }
-
-                //Format the date
-                let date = item.querySelector("pubDate").innerHTML;
-                if (date) {
-                  date = date.split(" ");
-                  date = date.slice(0, 4);
-                  date = date.join(" ");
-                }
-
-                //Create the blog post item, and add it to the list
-                post.title = "<h2>" + title + "</h2>";
-                post.date = "<p>" + date + "</p>";
-                post.link = link;
-                post.img = img;
-                post.desc = "<p>" + desc + "</p>";
-                this.posts.push(post);
-              }
-            });
-
-            //Inform user if posts were found
-            if (items.length > 0) sendSuccess("Loaded Posts");
-            else
-              sendError(
-                "No posts were found, make sure you're not using the RSS Feed"
+              title = title.substr(
+                titlePrefix.length,
+                title.length - 3 - titlePrefix.length
               );
+              
+              const linkElement = item.querySelector("link");
+              const link = linkElement ? linkElement.innerHTML : "";
+              
+              let img = item.getElementsByTagName("media:thumbnail")[0];
+              if (img) img = img.attributes[0].nodeValue;
+              
+              let desc = item.querySelector("description");
+              if (desc) {
+                desc = desc.innerHTML;
+                desc = desc.substr(
+                  titlePrefix.length,
+                  desc.length - 3 - titlePrefix.length
+                );
+              }
 
-            //Send call to Google Analytics
-            gtag("event", "Page", {
-              event_category: "Loading Posts",
-              event_label: url,
-              event_value: maxCount,
-            });
-          })
-          .catch((error) => sendError("Unable to load URL", error));
+              //Format the date
+              const dateElement = item.querySelector("pubDate");
+              let date = dateElement ? dateElement.innerHTML : "";
+              if (date) {
+                date = date.split(" ");
+                date = date.slice(0, 4);
+                date = date.join(" ");
+              }
+
+              //Create the blog post item, and add it to the list (sanitized)
+              post.title = `<h2>${title}</h2>`;
+              post.date = `<p>${date}</p>`;
+              post.link = link;
+              post.img = img ? img : null;
+              post.desc = `<p>${desc}</p>`;
+              newPosts.push(post);
+            } catch (itemError) {
+              console.error("Error parsing RSS item:", itemError);
+              // Continue with next item
+            }
+          }
+        });
+        
+        // Remove skeleton loaders
+        this.posts = this.posts.filter(post => !post.skeleton);
+        // Add actual posts
+        this.posts.push(...newPosts);
+
+        //Inform user if posts were found
+        if (newPosts.length > 0) {
+          sendSuccess(`Loaded ${newPosts.length} post(s)`);
+        } else {
+          sendError("No posts were found, make sure you're not using the RSS Feed");
+        }
+
+        //Send call to Google Analytics
+        gtag("event", "Page", {
+          event_category: "Loading Posts",
+          event_label: url,
+          event_value: maxCount,
+        });
+      } catch (error) {
+        // Remove skeleton loaders on error
+        this.posts = this.posts.filter(post => !post.skeleton);
+        sendError("Unable to load URL", error);
+      } finally {
+        this.loading.posts = false;
       }
     },
 
     // Load single blog post
     //TODO: Add a way to load blog post similar to how twitter would share the page, look for title, desc, and thumbnail
-    loadPostFromURL() {
-      var url = this.$refs.loadPost.value;
-      if (!url || url.length < 0) sendError("Invalid load Page's URL");
-      else {
+    async loadPostFromURL() {
+      let url = this.$refs.loadPost.value;
+      if (!url || url.length < 0) {
+        sendError("Invalid load Page's URL");
+        return;
+      }
+      
+      // Validate URL format
+      try {
+        url = validateFetchURL(url);
+      } catch (error) {
+        sendError(error.message);
+        return;
+      }
+      
+      if (this.loading.posts) {
+        sendInfo("Already loading posts...");
+        return;
+      }
+      
+      this.loading.posts = true;
+      
+      try {
         sendInfo("Loading Posts");
-        fetch(url)
-          .then((res) => res.text())
-          .then((data) => {
-            let post = { style: {} };
-            let doc = new DOMParser().parseFromString(data, "text/html");
+        const data = await fetchWithFallback(url);
+        const post = { style: {} };
+        const doc = new DOMParser().parseFromString(data, "text/html");
 
-            //See if the description can be found
-            let tags = doc.querySelector(".post-content").querySelectorAll("*");
-            let p = "";
-            for (let i = 0; i < tags.length; i++) {
-              if (
-                tags[i].nodeName == "IMG" &&
-                tags[i].alt != "image" &&
-                tags[i].alt != null &&
-                tags[i].alt.length != 0
-              ) {
-                p += tags[i].alt.trim() + " ";
-              } else if (
-                tags[i].textContent != null &&
-                tags[i].textContent.length != 0
-              )
-                p += tags[i].outerText.trim() + " ";
-            }
+        //See if the description can be found
+        const postContent = doc.querySelector(".post-content");
+        if (!postContent) {
+          throw new Error("Could not find post content on page");
+        }
+        
+        const tags = postContent.querySelectorAll("*");
+        let p = "";
+        for (let i = 0; i < tags.length; i++) {
+          if (
+            tags[i].nodeName === "IMG" &&
+            tags[i].alt !== "image" &&
+            tags[i].alt !== null &&
+            tags[i].alt.length !== 0
+          ) {
+            p += `${tags[i].alt.trim()} `;
+          } else if (
+            tags[i].textContent !== null &&
+            tags[i].textContent.length !== 0
+          )
+            p += `${tags[i].outerText.trim()} `;
+        }
 
-            let desc = p.split(" ");
-            desc = desc.slice(0, Math.min(desc.length, 30)).join(" ");
-            if (desc && desc[desc.length - 1].match(/\W/g))
-              desc = desc.substr(0, desc.length - 1);
-            if (desc) desc += "...";
-            post.desc = "<p>" + desc + "</p>";
+        let desc = p.split(" ");
+        desc = desc.slice(0, Math.min(desc.length, 30)).join(" ");
+        if (desc && desc[desc.length - 1].match(/\W/g))
+          desc = desc.substr(0, desc.length - 1);
+        if (desc) desc += "...";
+        post.desc = `<p>${desc}</p>`;
 
-            //Get the rest of the values as they will be found
-            post.title =
-              "<h2>" +
-              doc.querySelector(".post").querySelector(".post-title")
-                .innerHTML +
-              "</h2>";
-            post.link = url;
-            if (
-              doc.querySelector(".post").querySelector(".post-meta") &&
-              doc
-                .querySelector(".post")
-                .querySelector(".post-meta")
-                .querySelector("time")
-            )
-              post.date =
-                "<p>" +
-                doc
-                  .querySelector(".post")
-                  .querySelector(".post-meta")
-                  .querySelector("time").innerHTML +
-                "</p>";
+        //Get the rest of the values as they will be found (sanitized)
+        const postElement = doc.querySelector(".post");
+        if (!postElement) {
+          throw new Error("Could not find post element on page");
+        }
+        
+        const postTitleElement = postElement.querySelector(".post-title");
+        if (!postTitleElement) {
+          throw new Error("Could not find post title on page");
+        }
+        
+        const postTitle = postTitleElement.innerHTML;
+        post.title = `<h2>${postTitle}</h2>`;
+        post.link = url;
+        
+        const postMeta = postElement.querySelector(".post-meta");
+        if (postMeta) {
+          const timeElement = postMeta.querySelector("time");
+          if (timeElement) {
+            const postDate = timeElement.innerHTML;
+            post.date = `<p>${postDate}</p>`;
+          }
+        }
 
-            //Check for a thumbnail
-            if (doc.querySelector(".post").querySelector(".bg"))
-              post.img = doc
-                .querySelector(".post")
-                .querySelector(".bg")
-                .style.backgroundImage.replace('url("', "")
-                .replace('")', "");
-            if (doc.querySelector(".post").querySelector(".post-thumbnail"))
-              post.img = doc
-                .querySelector(".post")
-                .querySelector(".post-thumbnail")
-                .querySelector("img").src;
+        //Check for a thumbnail
+        const bgElement = postElement.querySelector(".bg");
+        if (bgElement) {
+          post.img = bgElement.style.backgroundImage
+            .replace('url("', "")
+            .replace('")', "");
+        }
+        
+        const thumbnailElement = postElement.querySelector(".post-thumbnail");
+        if (thumbnailElement) {
+          const imgElement = thumbnailElement.querySelector("img");
+          if (imgElement) {
+            post.img = imgElement.src;
+          }
+        }
 
-            this.posts.push(post);
+        this.posts.push(post);
 
-            sendSuccess("Loaded Posts");
+        sendSuccess("Loaded Post");
 
-            //Send google analytics call
-            gtag("event", "Post", {
-              event_category: "Loading Posts",
-              event_label: url,
-            });
-          })
-          .catch((error) => sendError("Unable to load URL", error));
+        //Send google analytics call
+        gtag("event", "Post", {
+          event_category: "Loading Posts",
+          event_label: url,
+        });
+      } catch (error) {
+        sendError("Unable to load URL", error);
+      } finally {
+        this.loading.posts = false;
       }
     },
 
     //Search a url for analytics code
-    findAnalyticsCode() {
+    async findAnalyticsCode() {
+      if (this.loading.analytics) {
+        sendInfo("Already searching...");
+        return;
+      }
+      
+      this.loading.analytics = true;
       sendInfo("Searching for Google Analytics Code");
       let websiteURL = this.$refs.analyticsWebURL.value;
-      if (websiteURL.indexOf("http") != 0) websiteURL = "https://" + websiteURL;
-      fetch(websiteURL)
-        .then((res) => res.text())
-        .then((data) => {
-          //Look for analytics code
-          let analyticsCode = data.match(/UA-\w*-1/g);
-          this.settings.analytics.code = analyticsCode;
+      if (websiteURL.indexOf("http") !== 0) websiteURL = `https://${websiteURL}`;
+      
+      // Validate URL format
+      try {
+        websiteURL = validateFetchURL(websiteURL);
+      } catch (error) {
+        sendError(error.message);
+        this.loading.analytics = false;
+        return;
+      }
+      
+      try {
+        const data = await fetchWithFallback(websiteURL);
+        
+        //Look for analytics code
+        const analyticsCode = data.match(/UA-\w*-1/g);
+        this.settings.analytics.code = analyticsCode;
 
-          if (analyticsCode != null)
-            sendSuccess("Found Analytics Code: " + analyticsCode);
-          else sendError("Unable to find Google Analytics Code");
-        })
-        .catch((error) =>
-          sendError("Unable to find Google Analytics Code", error)
-        );
+        if (analyticsCode !== null)
+          sendSuccess(`Found Analytics Code: ${analyticsCode}`);
+        else sendError("Unable to find Google Analytics Code");
+      } catch (error) {
+        sendError("Unable to find Google Analytics Code", error);
+      } finally {
+        this.loading.analytics = false;
+      }
     },
 
     forceRerender() {
-      tinymce.remove()
+      // Properly remove all TinyMCE editors with cleanup
+      const editors = tinymce.get();
+      if (editors) {
+        if (Array.isArray(editors)) {
+          editors.forEach(editor => {
+            if (editor) editor.remove();
+          });
+        } else {
+          editors.remove();
+        }
+      } else {
+        // Fallback to remove all
+        tinymce.remove();
+      }
       this.app.forceRerender = !this.app.forceRerender;
     },
 
@@ -1017,17 +1288,17 @@ let app = new Vue({
       else return this.get(this.styles.post, key);
     },
 
-    //Edit post
+    //Edit post with debouncing
     editPost(pos, key, value) {
-      let updateNotRender = this.has(this.posts[pos], key);
-
       // If currently on cooldown - reset cooldown
-      if (this.newsletter.editPostTimer)
+      if (this.newsletter.editPostTimer) {
         clearTimeout(this.newsletter.editPostTimer);
+      }
+      
       this.newsletter.editPostTimer = setTimeout(() => {
         this.set(this.posts[pos], key, value);
-
         this.forceRerender();
+        this.newsletter.editPostTimer = null;
       }, 250);
     },
 
@@ -1057,24 +1328,6 @@ let app = new Vue({
         sendSuccess("Copied HTML Code");
     },
 
-    copyNewsletterWord() {
-      this.app.silentToggle.push("app.wordSupport");
-      if (!this.wordSupport) {
-        this.wordSupport = true;
-        setTimeout(function () {
-          this.copyNewsletter();
-          setTimeout(function () {
-            app.wordSupport = false;
-            setTimeout(function () {
-              app.app.silentToggle.splice(
-                app.app.silentToggle.indexOf("app.wordSupport"),
-                1
-              );
-            }, 1);
-          }, 1);
-        }, 1);
-      }
-    },
     resetStyles() {
       this.styles = JSON.parse(JSON.stringify(this.stylesBackup));
 
@@ -1103,36 +1356,92 @@ let app = new Vue({
 
     //Add footer template HTML into custom footer
     importFooterTemplateIntoCustom() {
-      setTimeout(()=>{
-        app.settings.footer.style = 1
-        console.log("setting footer style to "+this.settings.footer.style)
+      // First, switch to custom footer style and wait for render
+      this.settings.footer.style = 2;
+      
+      this.$nextTick(() => {
+        // Ensure TinyMCE is initialized for the footer-html element
+        const footerEditor = document.getElementById('footer-html');
+        if (footerEditor) {
+          // Trigger mouseover to initialize TinyMCE if not already initialized
+          const mouseoverEvent = new Event('mouseover');
+          footerEditor.dispatchEvent(mouseoverEvent);
+        }
         
-      setTimeout(()=>{
-        console.log(app.$refs.newsletter.querySelector(".newsletter-footer").outerHTML)
-        app.settings.footer.html = app.$refs.newsletter.querySelector(".newsletter-footer").outerHTML
-        app.settings.footer.style = '2'
-        app.forceRerender();
-        sendSuccess("Footer template has been imported into the custom section.")
-      }, 1)
-    }, 1)
+        // Wait for TinyMCE to initialize (increased delay for reliability)
+        setTimeout(() => {
+          // Temporarily switch to template style to get the HTML
+          this.settings.footer.style = 1;
+          
+          this.$nextTick(() => {
+            const footerElement = this.$refs.newsletter.querySelector(".newsletter-footer");
+            if (footerElement) {
+              const footerHTML = footerElement.outerHTML;
+              
+              // Switch back to custom and set the HTML
+              this.settings.footer.style = 2;
+              this.settings.footer.html = footerHTML;
+              
+              this.$nextTick(() => {
+                // Update TinyMCE content if editor is initialized
+                const editor = tinymce.get('footer-html');
+                if (editor) {
+                  editor.setContent(footerHTML);
+                }
+                
+                sendSuccess("Footer template has been imported into the custom section.");
+              });
+            } else {
+              sendError("Could not find footer template element");
+            }
+          });
+        }, 500); // Give TinyMCE time to initialize
+      });
     }
   },
   updated() {
     this.newsletterHTML = this.$refs.newsletter.outerHTML;
   },
+  beforeDestroy() {
+    // Clean up any remaining TinyMCE editors
+    const editors = tinymce.get();
+    if (editors) {
+      if (Array.isArray(editors)) {
+        editors.forEach(editor => {
+          if (editor) editor.remove();
+        });
+      }
+    }
+    
+    // Clean up snotify backdrop listener
+    const backdrop = document.querySelector(".snotify-backdrop");
+    if (backdrop && this.backdropHandler) {
+      backdrop.removeEventListener("click", this.backdropHandler);
+    }
+  },
 });
-setTimeout(()=>
-  document.querySelector(".snotify-backdrop").addEventListener("click", function(e){
-    app.$snotify.clear()
-    e.target.remove()
-  }), 1
-)
+
+// Setup backdrop handler with proper cleanup
+setTimeout(() => {
+  const backdrop = document.querySelector(".snotify-backdrop");
+  if (backdrop) {
+    const backdropHandler = function(e) {
+      app.$snotify.clear();
+      e.target.remove();
+    };
+    backdrop.addEventListener("click", backdropHandler);
+    // Store handler for cleanup
+    if (app) {
+      app.backdropHandler = backdropHandler;
+    }
+  }
+}, 1);
 
 
 // Load JSON File
 function loadJSONFile(cb) {
-  var div = document.createElement("div"),
-    input = document.createElement("input");
+  const div = document.createElement("div");
+  const input = document.createElement("input");
   input.type = "file";
   div.style.width = "0";
   div.style.height = "0";
@@ -1140,14 +1449,14 @@ function loadJSONFile(cb) {
   input.accept = "application/JSON";
   document.body.appendChild(div);
   div.appendChild(input);
-  var ev = new MouseEvent("click", {});
+  const ev = new MouseEvent("click", {});
   input.dispatchEvent(ev);
-  input.addEventListener("change", function (e) {
-    let file = e.target.files[0];
-    let reader = new FileReader();
+  input.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    const reader = new FileReader();
     reader.readAsText(file);
-    reader.onload = function () {
-      let res = JSON.parse(reader.result);
+    reader.onload = () => {
+      const res = JSON.parse(reader.result);
       cb(res);
       document.body.removeChild(div);
     };
@@ -1156,10 +1465,10 @@ function loadJSONFile(cb) {
 
 //Export JSON File
 function exportJSONToFile(obj, fileName) {
-  var file = new File([obj], fileName, { type: "text/json" });
-  var blobUrl = (URL || webkitURL).createObjectURL(file);
-  var div = document.createElement("div"),
-    anch = document.createElement("a");
+  const file = new File([obj], fileName, { type: "text/json" });
+  const blobUrl = (URL || webkitURL).createObjectURL(file);
+  const div = document.createElement("div");
+  const anch = document.createElement("a");
 
   document.body.appendChild(div);
   div.appendChild(anch);
@@ -1170,7 +1479,7 @@ function exportJSONToFile(obj, fileName) {
   anch.href = blobUrl;
   anch.download = fileName;
 
-  var ev = new MouseEvent("click", {});
+  const ev = new MouseEvent("click", {});
   anch.dispatchEvent(ev);
   document.body.removeChild(div);
 }
@@ -1180,30 +1489,31 @@ function isLightColor(color) {
   // Check the format of the color, HEX or RGB?
   if (!color) return false;
 
+  let r, g, b;
+  
   if (color.match(/^rgb/)) {
-    // If HEX --> store the red, green, blue values in separate variables
-    color = color.match(
+    // If RGB --> store the red, green, blue values in separate variables
+    const match = color.match(
       /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/
     );
 
-    r = color[1];
-    g = color[2];
-    b = color[3];
+    r = match[1];
+    g = match[2];
+    b = match[3];
   } else {
-    // If RGB --> Convert it to HEX: http://gist.github.com/983661
-    color = +("0x" + color.slice(1).replace(color.length < 5 && /./g, "$&$&"));
+    // If HEX --> Convert it to RGB: http://gist.github.com/983661
+    const hex = +("0x" + color.slice(1).replace(color.length < 5 && /./g, "$&$&"));
 
-    r = color >> 16;
-    g = (color >> 8) & 255;
-    b = color & 255;
+    r = hex >> 16;
+    g = (hex >> 8) & 255;
+    b = hex & 255;
   }
 
   // HSP equation from http://alienryderflex.com/hsp.html
-  hsp = Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
+  const hsp = Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
 
   // Using the HSP value, determine whether the color is light or dark
-  if (hsp > 127.5) return true;
-  else return false;
+  return hsp > 127.5;
 }
 
 //Copy text to clipboard
@@ -1236,11 +1546,11 @@ function copyTextToClipboard(text) {
   return successful;
 }
 
-//Select the Newsleter
+//Select the Newsletter
 function selectElementContents(el) {
-  let body = document.body,
-    range,
-    sel;
+  const body = document.body;
+  let range, sel;
+  
   if (document.createRange && window.getSelection) {
     range = document.createRange();
     sel = window.getSelection();
@@ -1256,21 +1566,19 @@ function selectElementContents(el) {
 
 //Move items in array
 function moveItem(array, from, to) {
-  let f = array.splice(from, 1)[0];
-  array.splice(to, 0, f);
+  const item = array.splice(from, 1)[0];
+  array.splice(to, 0, item);
   return array;
 }
 
 //Send Error Popup
 function sendError(msg, er) {
   app.$snotify.error(msg);
-  console.log("Error: " + er ? er : msg);
 }
 
 //Send Success Popup
 function sendSuccess(msg) {
   app.$snotify.success(msg);
-  console.log("Success: " + msg);
 }
 
 //Delay function
@@ -1285,7 +1593,164 @@ function delay(fn, ms) {
 //Send Info Popup
 function sendInfo(msg) {
   app.$snotify.info(msg);
-  console.log("Info: " + msg);
+}
+
+//Validate URL format
+function isValidURL(string) {
+  try {
+    const url = new URL(string);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch (_) {
+    return false;
+  }
+}
+
+//Validate and sanitize URL for fetch requests
+function validateFetchURL(url) {
+  if (!url || typeof url !== 'string') {
+    throw new Error('Invalid URL provided');
+  }
+  
+  // Trim whitespace
+  url = url.trim();
+  
+  // Check if valid URL
+  if (!isValidURL(url)) {
+    throw new Error('URL must be a valid HTTP or HTTPS address');
+  }
+  
+  return url;
+}
+
+//Fetch with timeout
+function fetchWithTimeout(url, options = {}, timeout = 10000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout')), timeout)
+    )
+  ]);
+}
+
+//Fetch with automatic CORS bypass fallback if needed
+async function fetchWithFallback(url, timeout = 5000) {
+  // Try to convert HTTP to HTTPS first
+  let urlToFetch = url;
+  const isHttp = url.startsWith('http://');
+  
+  if (isHttp) {
+    urlToFetch = url.replace('http://', 'https://');
+  }
+  
+  // Try direct fetch first (no CORS proxy)
+  try {
+    const response = await fetchWithTimeout(urlToFetch, {}, timeout);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.text();
+  } catch (error) {
+    // List of CORS proxy services to try as fallbacks
+    const proxies = [
+      // AllOrigins
+      (url) => ({ url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, isJson: true }),
+      // Corsproxy.io
+      (url) => ({ url: `https://corsproxy.io/?${encodeURIComponent(url)}`, isJson: false }),
+    ];
+    
+    // Try each proxy service
+    for (let i = 0; i < proxies.length; i++) {
+      try {
+        const { url: proxyUrl, isJson } = proxies[i](urlToFetch);
+        const response = await fetchWithTimeout(proxyUrl, {}, timeout);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Handle different response formats
+        if (isJson) {
+          const jsonData = await response.json();
+          return jsonData.contents;
+        } else {
+          return await response.text();
+        }
+      } catch (proxyError) {
+        // If this is the last proxy and we converted from HTTP, try original HTTP URL
+        if (i === proxies.length - 1 && isHttp) {
+          // Try direct HTTP fetch first
+          try {
+            const response = await fetchWithTimeout(url, {}, timeout);
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return await response.text();
+          } catch (httpDirectError) {
+            // Try proxies with HTTP
+            for (let j = 0; j < proxies.length; j++) {
+              try {
+                const { url: proxyUrl, isJson } = proxies[j](url);
+                const response = await fetchWithTimeout(proxyUrl, {}, timeout);
+                
+                if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                if (isJson) {
+                  const jsonData = await response.json();
+                  return jsonData.contents;
+                } else {
+                  return await response.text();
+                }
+              } catch (httpProxyError) {
+                if (j === proxies.length - 1) {
+                  throw httpProxyError;
+                }
+              }
+            }
+          }
+        }
+        
+        // If not the last proxy, continue to next one
+        if (i < proxies.length - 1) continue;
+        
+        // If all proxies failed, throw the last error
+        throw proxyError;
+      }
+    }
+  }
+}
+
+//Safe localStorage operations
+function safeLocalStorageGet(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (error) {
+    return null;
+  }
+}
+
+function safeLocalStorageSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    sendError('Unable to save to browser storage. You may be in private browsing mode.');
+    return false;
+  }
+}
+
+function safeLocalStorageRemove(key) {
+  try {
+    localStorage.removeItem(key);
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 //Add Splice to strings
@@ -1297,31 +1762,50 @@ if (!String.prototype.splice) {
   };
 }
 
-function getDataUrl(e, cb) {
-  let canvas = document.createElement("canvas");
-  let ctx = canvas.getContext("2d");
-  let img = new Image();
+function getDataUrl(e, cb, progressCb = null) {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  const img = new Image();
 
-  img.onload = function () {
+  img.onload = () => {
     canvas.width = img.width;
     canvas.height = img.height;
     ctx.drawImage(img, 0, 0);
+    if (progressCb) progressCb(100);
     cb(canvas.toDataURL());
+  };
+  
+  img.onerror = () => {
+    console.error('Failed to load image:', e.src);
+    if (progressCb) progressCb(-1); // Indicate error
   };
 
   img.setAttribute("crossOrigin", "Anonymous");
-  img.src = "https://cors-anywhere.herokuapp.com/" + e.src;
+  // Using AllOrigins as CORS proxy
+  img.src = `https://api.allorigins.win/raw?url=${encodeURIComponent(e.src)}`;
+  
+  // Simulate progress for images (since we can't get actual progress from CORS proxy)
+  if (progressCb) {
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 10;
+      if (progress >= 90) {
+        clearInterval(interval);
+      } else {
+        progressCb(progress);
+      }
+    }, 100);
+  }
 }
 
-function downloadInnerHtml(filename, elId, mimeType) {
-  var elHtml = document.getElementById(elId).innerHTML;
-  var link = document.createElement("a");
-  mimeType = mimeType || "text/plain";
+function downloadInnerHtml(filename, elId, mimeType = "text/plain") {
+  const elHtml = document.getElementById(elId).innerHTML;
+  const link = document.createElement("a");
 
   link.setAttribute("download", filename);
   link.setAttribute(
     "href",
-    "data:" + mimeType + ";charset=utf-8," + encodeURIComponent(elHtml)
+    `data:${mimeType};charset=utf-8,${encodeURIComponent(elHtml)}`
   );
   link.click();
 }

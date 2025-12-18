@@ -23,11 +23,13 @@
 
     <!-- Misc -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto|Roboto+Condensed&display=swap" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <!-- VueJS -->
-    <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://unpkg.com/vue@2.7.16/dist/vue.min.js"></script>
 
     <!-- TinyMCE -->
     <script src="https://cdn.tiny.cloud/1/eqepoqfy8y9ftr5kx84v4zm1og0ptew3yuwviio2jzd1meo0/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
@@ -49,7 +51,7 @@
         :class="{open: app.sidebarHover || app.sidebarStuck, stuck: app.sidebarStuck}"
       >
         <span class="sidebar-title">
-          <i class="fa fa-th fa-2x"></i>
+          <i class="fa fa-newspaper fa-2x"></i>
           <p class="collapsed">Newsletter Generator</p>
         </span>
         <a class="sidebar-pin" @click="app.sidebarStuck = !app.sidebarStuck"><i class="fas fa-thumbtack"></i></a>
@@ -78,17 +80,6 @@
             <p class="collapsed">Load / Save</p>
           </li>
         </ul>
-        <!-- <span class="sidebar-split"></span>
-            <ul class="sidebar-menu">
-                <li class="sidebar-item" :class="{active: app.activeView === 'analytics'}" @click="app.activeView = 'analytics'; scrollToTop()">
-                    <i class="fa fa-chart-pie fa-2x"></i>
-                    <p class="collapsed">Analytics</p>
-                </li>
-                <li class="sidebar-item" :class="{active: app.activeView === 'banner'}" @click="app.activeView = 'banner'; scrollToTop()">
-                    <i class="fa fa-image fa-2x"></i>
-                    <p class="collapsed">Custom Banner Creator</p>
-                </li>
-            </ul> -->
         <span class="sidebar-split"></span>
         <ul class="sidebar-menu">
           <li class="sidebar-item" :class="{active: app.activeView === 'settings'}" @click="app.activeView = 'settings'; scrollToTop()">
@@ -117,8 +108,12 @@
               id="newsletter"
               width="800"
               align="center"
+              role="presentation"
+              border="0"
+              cellpadding="0"
+              cellspacing="0"
               class="no-borders"
-              style="border-collapse: collapse; box-sizing: border-box; overflow-wrap: break-word"
+              style="border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt;"
               :style="{'background-color': styles.backgroundColor}"
             >
               <tr>
@@ -128,82 +123,98 @@
                     id="newsletter-content"
                     align="center"
                     width="800"
+                    role="presentation"
+                    border="0"
+                    cellpadding="0"
                     class="no-borders"
-                    style="margin: 0 auto; border-collapse: seperate; border-spacing: 0 4px; box-sizing: border-box"
+                    style="margin: 0 auto; border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt;"
                     :cellspacing="styles.post.spacing"
                     :style="{'border-spacing': '0 '+styles.post.spacing+'px'}"
                   >
                     <!-- HEADER -->
                     <tr v-if="settings.header.style == '1'" id="newsletter-header">
-                      <td colspan="2" :style="{'border': styles.header.borderWidth+'px solid '+styles.header.borderColour}">
-                        <img :src="settings.header.image" width="800" alt="Newsletter Header" />
+                      <td colspan="2" :style="{'border': styles.header.borderWidth+'px solid '+styles.header.borderColour}" style="padding: 0; line-height: 0;">
+                        <img :src="settings.header.image" width="800" alt="Newsletter Header" style="display: block; width: 100%; max-width: 800px; height: auto; border: 0;" />
                       </td>
                     </tr>
                     <tr v-if="settings.header.style == '2'" id="newsletter-header" style="text-align: center" :style="{'background-color': styles.header.backgroundColor}">
-                      <td valign="middle" style="padding: 20px; font-family: 'Muli', Helvetica, sans-serif" colspan="2">
+                      <td valign="middle" style="padding: 20px; font-family: 'Muli', Helvetica, Arial, sans-serif;" colspan="2">
                         <h2 style="margin: 0" :style="{color: styles.header.textColor}">{{settings.header.titles.title}}</h2>
                         <h4 style="margin: 0" :style="{color: styles.header.textColor}">{{settings.header.titles.subtitle}}</h4>
                       </td>
                     </tr>
-                    <tr v-if="settings.header.style == '3'" id="newsletter-header" style="align-items: left" :style="{'background-color': styles.header.backgroundColor}">
-                      <td valign="middle" style="padding: 0; font-family: 'Muli', Helvetica, sans-serif" colspan="2">
-                        <span v-html="settings.header.html" :style="{color: styles.header.textColor}"></span>
+                    <tr v-if="settings.header.style == '3'" id="newsletter-header" :style="{'background-color': styles.header.backgroundColor}">
+                      <td valign="middle" style="padding: 0; font-family: 'Muli', Helvetica, Arial, sans-serif;" colspan="2">
+                        <div v-html="settings.header.html" :style="{color: styles.header.textColor}"></div>
                       </td>
                     </tr>
 
                     <!-- CONTENT -->
                     <tr v-for="(post, pos) in posts">
-                      <td style="padding: 0" class="newsletter-body">
+                      <td :style="{'padding-top': styles.post.spacing+'px', 'padding-bottom': pos === posts.length - 1 ? styles.post.spacing+'px' : '0', 'padding-left': '0', 'padding-right': '0'}" class="newsletter-body">
                         <table
-                          valign="top"
+                          role="presentation"
                           class="no-borders"
+                          :class="{'skeleton-preview': post.skeleton}"
                           width="800"
-                          style="align-items: left; display: inline-block; border-collapse: separate"
+                          style="width: 800px; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt;"
                           border="0"
                           cellspacing="0"
-                          cellpadding="20"
-                          :style="{'background-color': getPostStyle(pos, 'backgroundColor'),'border-radius': getPostStyle(pos, 'borderRadius')+'px'}"
+                          cellpadding="0"
+                          :style="{'background-color': getPostStyle(pos, 'backgroundColor'),'border-radius': getPostStyle(pos, 'borderRadius')+'px', '-webkit-border-radius': getPostStyle(pos, 'borderRadius')+'px', '-moz-border-radius': getPostStyle(pos, 'borderRadius')+'px'}"
                         >
                           <!-- 'box-shadow': post.shadow != null ? post.shadow ? '0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23)' : '' : styles.post.shadow ? '0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23)' : '', -->
 
-                          <tr>
-                            <!-- If image in post -->
-                            <td v-if="post.img" width="200" valign="top" style="display: inline-block; padding: 10px 10px 10px 10px">
-                              <!-- <div style="background-position: center center; background-repeat: no-repeat; background-size: contain; height: 200px; width: 100%" height="200px" width="100%"  :style="{'background-image': 'url('+post.img+')'}"> -->
-                              <img :src="post.img" height="auto" width="200" :alt="'Post #'+ pos + ' Thumbnail'" />
+                          <tr v-if="post.skeleton">
+                            <!-- Skeleton preview post -->
+                            <td width="200" valign="top" style="width: 200px; padding: 20px;">
+                              <div class="skeleton-loader" style="width: 200px; height: 120px;"></div>
                             </td>
-                            <td v-if="post.img" width="560" style="display: inline-block; padding: 10px 10px 20px 10px; font-family: 'Muli', Helvetica, sans-serif">
-                              <span style="margin-bottom: 0" v-html="post.title" :style="{'color': getPostStyle(pos, 'textColor')}"></span>
-                              <span
+                            <td width="560" style="width: 560px; padding: 20px; font-family: 'Muli', Helvetica, Arial, sans-serif; vertical-align: top;">
+                              <div class="skeleton-loader" style="height: 24px; width: 60%; margin-bottom: 8px;"></div>
+                              <div class="skeleton-loader" style="height: 14px; width: 100%; margin-bottom: 4px;"></div>
+                              <div class="skeleton-loader" style="height: 14px; width: 100%; margin-bottom: 4px;"></div>
+                              <div class="skeleton-loader" style="height: 14px; width: 85%;"></div>
+                            </td>
+                          </tr>
+
+                          <tr v-else>
+                            <!-- If image in post -->
+                            <td v-if="post.img" width="200" valign="top" style="width: 200px; padding: 20px;">
+                              <!-- <div style="background-position: center center; background-repeat: no-repeat; background-size: contain; height: 200px; width: 100%" height="200px" width="100%"  :style="{'background-image': 'url('+post.img+')'}"> -->
+                              <img :src="post.img" height="auto" width="200" :alt="'Post #'+ pos + ' Thumbnail'" style="display: block; max-width: 200px; height: auto; border: 0;" />
+                            </td>
+                            <td v-if="post.img" width="560" style="width: 560px; padding: 20px; font-family: 'Muli', Helvetica, Arial, sans-serif; vertical-align: top;">
+                              <div style="margin-bottom: 0" v-html="post.title" :style="{'color': getPostStyle(pos, 'textColor')}"></div>
+                              <div
                                 v-if="post.date != '<p><br></p>'"
-                                style="font-size: 0.75em; opacity: 0.75"
+                                style="font-size: 0.75em;"
                                 :style="{'color': getPostStyle(pos, 'textColor')}"
                                 v-html="post.date"
-                              ></span>
-                              <span :style="{'color': getPostStyle(pos, 'textColor')}" v-html="post.desc"></span>
+                              ></div>
+                              <div :style="{'color': getPostStyle(pos, 'textColor')}" v-html="post.desc"></div>
 
-                              <table class="no-borders" v-if="post.link" width="100%" border="0" cellspacing="0" cellpadding="0">
+                              <table role="presentation" class="no-borders" v-if="post.link" width="100%" border="0" cellspacing="0" cellpadding="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
                                 <tr>
                                   <td>
                                     <table
+                                      role="presentation"
                                       class="no-borders"
                                       border="0"
                                       cellspacing="0"
                                       cellpadding="0"
+                                      style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;"
                                       :style="{'width': getPostStyle(pos, 'buttonWidth') + '%'}"
                                       :align="getPostStyle(pos, 'buttonAlign')"
                                     >
                                       <tr>
                                         <td
                                           :bgcolor="getPostStyle(pos, 'buttonWidth') != 0 ? getPostStyle(pos, 'buttonBackgroundColor') : ''"
-                                          style="padding: 12px 18px 12px 18px; border-radius: 3px"
+                                          style="padding: 12px 18px; border-radius: 3px; -webkit-border-radius: 3px; -moz-border-radius: 3px; mso-padding-alt: 12px 18px;"
                                           align="center"
                                         >
-                                          <a target="_blank" :href="post.link" style="text-decoration: none" :style="{'color': getPostStyle(pos, 'buttonTextColor')}"
-                                            ><strong style="font-weight: normal">
-                                              <span v-if="post.linkLabel != null && post.linkLabel != ''" v-html="post.linkLabel"></span>
-                                              <span v-else>Read More</span>
-                                            </strong></a
+                                          <a target="_blank" :href="post.link" style="text-decoration: none; display: inline-block; font-family: 'Muli', Helvetica, Arial, sans-serif; font-weight: bold;" :style="{'color': getPostStyle(pos, 'buttonTextColor')}"
+                                            ><span v-if="post.linkLabel != null && post.linkLabel != ''" v-html="post.linkLabel"></span><span v-else>Read More</span></a
                                           >
                                         </td>
                                       </tr>
@@ -214,41 +225,40 @@
                             </td>
 
                             <!-- If no image in post -->
-                            <td v-else width="780" style="display: inline-block; padding: 10px 10px 20px 10px; font-family: 'Muli', Helvetica, sans-serif" colspan="2">
-                              <span style="margin-bottom: 0" :style="getPostStyle(pos, 'textColor')" v-html="post.title"></span>
-                              <span
+                            <td v-else width="780" style="width: 780px; padding: 20px; font-family: 'Muli', Helvetica, Arial, sans-serif; vertical-align: top;" colspan="2">
+                              <div style="margin-bottom: 0" :style="{'color': getPostStyle(pos, 'textColor')}" v-html="post.title"></div>
+                              <div
                                 v-if="post.date != '<p><br></p>'"
-                                style="font-size: 0.75em; opacity: 0.75"
+                                style="font-size: 0.75em;"
                                 :style="{'color': getPostStyle(pos, 'textColor')}"
                                 v-html="post.date"
-                              ></span>
-                              <span :style="{'color': getPostStyle(pos, 'textColor')}" v-html="post.desc"></span>
-                              <table class="no-borders" v-if="post.link" width="100%" border="0" cellspacing="0" cellpadding="0">
+                              ></div>
+                              <div :style="{'color': getPostStyle(pos, 'textColor')}" v-html="post.desc"></div>
+                              <table role="presentation" class="no-borders" v-if="post.link" width="100%" border="0" cellspacing="0" cellpadding="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
                                 <tr>
                                   <td>
                                     <table
+                                      role="presentation"
                                       class="no-borders"
                                       border="0"
                                       cellspacing="0"
                                       cellpadding="0"
+                                      style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;"
                                       :style="{'width': getPostStyle(pos, 'buttonWidth') + '%'}"
                                       :align="getPostStyle(pos, 'buttonAlign')"
                                     >
                                       <tr>
                                         <td
                                           :bgcolor="getPostStyle(pos, 'buttonWidth') != 0 ? getPostStyle(pos, 'buttonBackgroundColor') : ''"
-                                          style="padding: 12px 18px 12px 18px; border-radius: 3px"
+                                          style="padding: 12px 18px; border-radius: 3px; -webkit-border-radius: 3px; -moz-border-radius: 3px; mso-padding-alt: 12px 18px;"
                                           align="center"
                                         >
                                           <a
                                             target="_blank"
                                             :href="post.link"
-                                            style="text-decoration: none; display: inline-block"
+                                            style="text-decoration: none; display: inline-block; font-family: 'Muli', Helvetica, Arial, sans-serif; font-weight: bold;"
                                             :style="{'color': getPostStyle(pos, 'buttonTextColor')}"
-                                            ><strong style="font-weight: normal">
-                                              <span v-if="post.linkLabel != null && post.linkLabel != ''" v-html="post.linkLabel"></span>
-                                              <span v-else>Read More</span>
-                                            </strong></a
+                                            ><span v-if="post.linkLabel != null && post.linkLabel != ''" v-html="post.linkLabel"></span><span v-else>Read More</span></a
                                           >
                                         </td>
                                       </tr>
@@ -265,7 +275,7 @@
                     <!-- FOOTER -->
 
                     <tr class="newsletter-footer" v-if="settings.footer.style == '1'">
-                      <td :style="{'background-color': styles.footer.backgroundColor}" valign="middle" style="padding: 20px; font-family: 'Muli', Helvetica, sans-serif">
+                      <td :style="{'background-color': styles.footer.backgroundColor}" valign="middle" style="padding: 20px; font-family: 'Muli', Helvetica, Arial, sans-serif;">
                         <p
                           v-if="settings.footer.preset.website || settings.footer.preset.social.facebook || settings.footer.preset.social.linkedin || settings.footer.preset.social.twitter"
                           style="margin: 0; margin-bottom: 10px; text-align: center; color: #fff"
@@ -345,6 +355,8 @@
                             :src="isLight(styles.footer.textColor) ? 'https://library.siteforward.ca/images/english/Manulife_Wealth_linear_reversed_rgb.png' : 'https://library.siteforward.ca/images/english/Manulife_Wealth_linear_rgb.png'"
                             width="350"
                             height="auto"
+                            alt="Manulife Wealth Logo"
+                            style="display: block; max-width: 350px; height: auto; border: 0; margin: 0 auto;"
                           /><br />
                           <em
                             ><a href="https://www.manulifewealth.ca/clients/en/corporate-disclaimers" target="_blank" :style="{color: styles.footer.linkColor}"
@@ -362,20 +374,8 @@
                       </td>
                     </tr>
                     <tr class="newsletter-footer" v-else-if="settings.footer.style == '2'">
-                      <td :style="{'background-color': styles.footer.backgroundColor}" valign="middle" style="padding: 20px; font-family: 'Muli', Helvetica, sans-serif">
-                        <span v-html="settings.footer.html" :style="{color: styles.footer.textColor}"></span>
-                      </td>
-                    </tr>
-
-                    <!-- ANALYTICS -->
-                    <tr v-if="analyticsEnabled">
-                      <td>
-                        <img
-                          alt="Analytics Loader"
-                          width="1"
-                          height="1"
-                          :src="'https://www.google-analytics.com/collect?v=1&tid'+settings.analytics.code+'&cid=555&t=event&ec=Email+Newsletter&ea=open&el='+settings.analytics.name"
-                        />
+                      <td :style="{'background-color': styles.footer.backgroundColor}" valign="middle" style="padding: 20px; font-family: 'Muli', Helvetica, Arial, sans-serif;">
+                        <div v-html="settings.footer.html" :style="{color: styles.footer.textColor}"></div>
                       </td>
                     </tr>
                   </table>
@@ -396,8 +396,7 @@
               ><span class="card-title-help" style="width: 300px">
                 <p>
                   <strong><i class="fas fa-envelope-open-text"></i> Preview Text</strong><br />
-                  <small>(The text below the subject line)</small><br />
-                  This is the text that will be shown in an email client when showing a preview of the email.
+                  This text appears below the subject line in email inboxes. It gives recipients a quick preview of what's inside before they open your newsletter.
                 </p>
               </span></span
             >
@@ -413,13 +412,11 @@
               ><span class="card-title-help" style="width: 300px">
                 <p>
                   <strong><i class="fas fa-mail-bulk"></i> Load Multiple Posts</strong><br />
-                  This will load in multiple blog posts from your website.<br />
-                  Make sure to use your Blog <strong>Page's</strong> URL
+                  Enter your blog page URL to import several posts at once. Use the main blog page address, not individual article links.
                 </p>
                 <p>
                   <strong><i class="fas fa-envelope"></i> Load Individual Posts</strong><br />
-                  This will load in a single blog post from your website.<br />
-                  Make sure to use your Blog <strong>Post's</strong> URL
+                  Enter a specific article URL to import just one post.
                 </p>
 
                 <p>
@@ -513,8 +510,8 @@
             ><span class="card-title-help" style="width: 350px">
               <p>
                 <strong>Using the template?</strong><br />
-                When using the template you will need to pay attention to the Trade Name/OBA/name field. If you're using your name you will need to ensure you accompany it with your title and legal entity.</p>
-                <p><strong>Note:</strong><br>When signing off with your own name, please use a soft line-break (Hold Shift and press Enter) to produce the example below:<br>Your Name<br>Investment Advisor, Manulife Wealth Inc.
+                When adding your name, always include your title and legal entity (e.g., "Investment Advisor, Manulife Wealth Inc.").</p>
+                <p><strong>Formatting Tip:</strong><br>To keep your signature on separate lines, hold <strong>Shift + Enter</strong> between each line:<br><br>Your Name<br>Investment Advisor, Manulife Wealth Inc.
               </p>
             </span></span
           >
@@ -533,7 +530,7 @@
               <div class="accordion-content">
                 <div class="form-item border split even">
                   <div>
-                    <editable :key="app.forceRerender" :id="footer-preset-name" v-model="settings.footer.preset.name" :value="settings.footer.preset.name"> </editable>
+                    <editable :key="app.forceRerender" id="footer-preset-name" v-model="settings.footer.preset.name" :value="settings.footer.preset.name"> </editable>
                     <label for="footer-preset-name">Trade Name / OBA / Name</label>
                   </div>
                   <div>
@@ -673,7 +670,7 @@
                   <label for="footer-html">Footer Content </label>
                 </div>
                 <p class="smallerText">
-                  Want to edit the template content? Click <a href="#" @click="importFooterTemplateIntoCustom()">here</a> to copy the code and add it into the custom section.<br />
+                  Want to edit the template content? Click <a href="#" @click.prevent="importFooterTemplateIntoCustom">here</a> to copy the code and add it into the custom section.<br />
                   <strong>Warning:</strong> This WILL overwrite anything in the custom section</p>
               </div>
             </div>
@@ -685,7 +682,7 @@
               ><span class="card-title-help" style="width: 200px">
                 <p>
                   <strong><i class="fas fa-palette"></i> Colour Settings</strong><br />
-                  These settings will affect all posts, but individual post colours can also be set per post in the Edit tab
+                  These colours apply to all posts by default. You can customize individual post colours in the Edit tab if needed.
                 </p>
               </span></span
             >
@@ -750,11 +747,11 @@
               ><span class="card-title-help" style="width: 300px">
                 <p>
                   <strong><i class="fas fa-pen-fancy"></i> Style Settings</strong><br />
-                  These settings will affect all posts, but individual post styles can also be set per post in the Edit tab
+                  These styles apply to all posts by default. You can customize individual post styles in the Edit tab if needed.
                 </p>
                 <p>
-                  <strong><i class="fas fa-border-style"></i> Border Radius(Rounded)</strong><br />
-                  Due to Outlook's limitations, this will not be displayed in Outlook for Desktop or Web.
+                  <strong><i class="fas fa-border-style"></i> Rounded Corners</strong><br />
+                  Note: Rounded corners won't appear in Outlook due to email client limitations, but will display in most other email programs.
                 </p>
               </span></span
             >
@@ -797,25 +794,33 @@
           <div class="card">
             <h3 class="card-title">Edit Newsletter</h3>
             <span class="card-title-icon" title="Add Custom Post" @click="addPost"><i class="far fa-plus-square tool-icon"></i></span>
-            <span class="card-title-icon" style="right: 50px"
-              ><i class="fas fa-question-circle tool-icon"></i
-              ><span class="card-title-help" style="width: 200px">
-                <p>
-                  <strong><i class="fa fa-image"></i> Looking for some images to use?</strong><br />Try SiteForward's image bank:<br /><a
-                    href="https://siteforward.ca/tools/image-bank"
-                    target="_blank"
-                    >https://siteforward.ca/tools/image-bank</a
-                  >
-                </p>
-              </span></span
-            >
             <div class="edit-newsletter">
               <ul class="newsletter-list">
                 <li v-if="posts.length == 0">
                   <p>No Posts Loaded</p>
                 </li>
+                <!-- Skeleton Loader for Loading State -->
                 <li
                   v-for="(post, pos) in posts"
+                  v-if="post.skeleton"
+                  class="card skeleton-post"
+                  style="margin-bottom: 10px"
+                  :key="'skeleton-'+pos"
+                >
+                  <div class="post">
+                    <div class="skeleton-loader skeleton-post-image"></div>
+                    <div class="data">
+                      <div class="skeleton-loader skeleton-post-title"></div>
+                      <div class="skeleton-loader skeleton-post-text"></div>
+                      <div class="skeleton-loader skeleton-post-text"></div>
+                      <div class="skeleton-loader skeleton-post-date"></div>
+                    </div>
+                  </div>
+                </li>
+                <!-- Regular Post -->
+                <li
+                  v-for="(post, pos) in posts"
+                  v-if="!post.skeleton"
                   class="card"
                   :class='{light: isLight(getPostStyle(pos, "backgroundColor"))}'
                   style="margin-bottom: 10px"
@@ -833,7 +838,7 @@
                     </div>
                   </div>
                   <div class="post">
-                    <img class="post-img" v-if="post.img" :src="post.img" :alt="'Post #'+ pos + ' Thumbnail'" />
+                    <img class="post-img" v-if="post.img" :src="post.img" :alt="'Post #'+ pos + ' Thumbnail'" loading="lazy" />
                     <div class="data">
                       <div class="form-item border" :style="{'color':getPostStyle(pos, 'textColor')}">
                         <editable :key="app.forceRerender" :id="'post-title-'+pos" v-model="post.title" :value="post.title"> </editable>
@@ -971,50 +976,6 @@
           </div>
         </div>
 
-        <div id="analytics" class="main-view" :class="{open: app.activeView === 'analytics'}">
-          <div class="card">
-            <h3 class="card-title">Find Google Analytics Code</h3>
-            <div class="form-item split border">
-              <div>
-                <input type="text" id="analyticsWebURL" ref="analyticsWebURL" required title=" " />
-                <label for="analyticsWebURL">Website URL</label>
-              </div>
-              <button @click="findAnalyticsCode"><i class="fas fa-search"></i> Find Code</button>
-            </div>
-          </div>
-          <div class="card">
-            <h3 class="card-title">Google Analytics</h3>
-            <p>
-              <strong><small>The Analytic's code will save automatically once added</small></strong
-              ><br />
-            </p>
-            <span class="card-title-icon"
-              ><i class="fas fa-question-circle tool-icon"></i
-              ><span class="card-title-help" style="width: 200px"> Google Analytics on Newsletters is still being tested, and may not work as intended. </span></span
-            >
-            <div class="form-item border">
-              <input type="text" id="analytics-code" v-model="settings.analytics.code" required title=" " />
-              <label for="analytics-code">Analytics Code</label>
-            </div>
-            <div class="form-item border">
-              <input type="text" id="analytics-name" v-model="settings.analytics.name" required title=" " />
-              <label for="analytics-name">Newsletter Tracking Name</label>
-            </div>
-          </div>
-          <div class="card">
-            <h3 class="card-title">How To View Analytics?</h3>
-            <ol>
-              <li>
-                If you don't have access to your Google Analytics, please send our team at SiteForward an email requesting access<br /><small
-                  >Please include your Google Email in your request</small
-                >
-              </li>
-              <li>Open your Google Analytics Dashboard</li>
-              <li>Open your Events Overview tab<br /><small>Located under the Behaviour tab</small></li>
-            </ol>
-          </div>
-        </div>
-
         <div id="load" class="main-view" :class="{open: app.activeView === 'load'}">
           <div class="card">
             <h3 class="card-title">Newsletter Management</h3>
@@ -1024,13 +985,12 @@
                 <p>
                   <strong><i class="fas fa-download"></i> Local <small>(Web browser)</small></strong
                   ><br />
-                  This will load/save the newsletter into your web browser's local storage.<br />
-                  Clearing your browser's cache will delete this saved version.
+                  Saves your newsletter in your browser. Quick and easy, but will be deleted if you clear your browser cache.
                 </p>
                 <p>
                   <strong><i class="fas fa-file-download"></i> File <small>(JSON file)</small></strong
                   ><br />
-                  This will load/save the newsletter into a .json file that can be moved and saved on your computer
+                  Downloads your newsletter as a file you can save anywhere on your computer for long-term storage and sharing.
                 </p>
               </span></span
             >
@@ -1073,7 +1033,7 @@
                 </div>
               </div>
               <div class="col col-left">
-                <img class="template-thumbnail" src="imgs/template.png" alt="Template Thumbnail" />
+                <img class="template-thumbnail" src="imgs/template.png" alt="Template Thumbnail" loading="lazy" />
               </div>
             </div>
           </div>
@@ -1085,18 +1045,21 @@
             <span class="card-title-icon"
               ><i class="fas fa-question-circle tool-icon"></i
               ><span class="card-title-help" style="width: 400px">
-                <p><strong>Important Note:</strong><br>If you're using this tool to create newsletters that involve dealer content please make sure to submit the final version to Sales Communication for review through Red Oak.</p>
+                <p><strong>⚠️ Compliance Reminder:</strong><br>If your newsletter includes dealer content, submit it to Sales Communication for review through Red Oak before sending.</p>
                 <p>
                   <strong><i class="fas fa-code"></i> Copy HTML Code</strong><br />
-                  Use this if you need to paste the HTML code into something that allows for code.
+                  For pasting into email platforms that accept HTML code.
                 </p>
                 <p>
                   <strong><i class="fas fa-paste"></i> Copy Newsletter</strong><br />
-                  Use this if you need to paste the Newsletter into something like MS Outlook.
+                  For pasting directly into email programs like Outlook (no code knowledge needed).
                 </p>
                 <p>
                   <strong><i class="fas fa-file-download"></i> Download Preview</strong><br />
-                  Use this if you need to download a preview for Compliance.
+                  Saves as an HTML file you can open in any web browser.
+                </p><p>
+                  <strong><i class="fas fa-file-pdf"></i> Download PDF</strong><br />
+                  Creates a PDF version for compliance review or sharing.
                 </p>
               </span></span
             >
@@ -1108,12 +1071,13 @@
               <button @click="copyNewsletterCode"><i class="fas fa-code"></i> Copy HTML Code</button>
               <button @click="copyNewsletter"><i class="fas fa-paste"></i> Copy Newsletter</button>
               <button @click="downloadHTML"><i class="fas fa-file-download"></i> &nbsp;Download Preview</button>
-              <!-- <button  @click="downloadPDF"><i class="fas fa-paste"></i> Download PDF</button> -->
+              <button @click="downloadPDF"><i class="fas fa-file-pdf"></i> Download PDF</button>
             </div>
           </div>
         </div>
 
-        <div id="banner" class="main-view" :class="{open: app.activeView === 'banner'}">
+        <!-- PHP Banner Generation - Commented Out -->
+        <!-- <div id="banner" class="main-view" :class="{open: app.activeView === 'banner'}">
           <div class="card">
             <h3 class="card-title">Create a Custom Banner Image</h3>
             <span class="card-title-icon"
@@ -1231,7 +1195,7 @@
               <hr />
               <div class="row middle">
                 <div class="col col-3" style="text-align: center; position: relative">
-                  <img width="100%" style="max-width: 800px; border: 1px solid #eee" ref="bannerCreatedImage" alt="Created Banner" />
+                  <img width="100%" style="max-width: 800px; border: 1px solid #eee" ref="bannerCreatedImage" alt="Created Banner" loading="lazy" />
                   <div class="bannerCreatedImageLoadingWrapper">
                     <i class="fas fa-circle-notch fa-2x"></i>
                   </div>
@@ -1249,7 +1213,7 @@
               </div>
             </div>
           </div>
-        </div>
+        </div> -->
 
         <div id="settings" class="main-view" :class="{open: app.activeView === 'settings'}">
           <div class="card">
@@ -1264,24 +1228,6 @@
               <button @click="resetStyles()" style="margin: 0"><i class="fas fa-remove-format"></i> Reset Styles</button>
             </div>
           </div>
-
-          <div class="card">
-            <h3 class="card-title">Enable MS Word Support</h3>
-            <p>
-              <small
-                ><strong
-                  >This can cause issues if enabled and is being used in an email. <br />Microsoft Word was not the intended use of this generator so support for MS Word is
-                  <i>very</i> limited.
-                </strong>
-                <br /><br />After pasting the newsletter into MS Word right click on the inserted table, open table properties, go to columns, and unselect
-                <strong>Preferred Width</strong>. Then you can drag the column width manually to fit the image</small
-              >
-            </p>
-            <div class="form-item">
-              <input type="checkbox" v-model="app.wordSupport" id="enableWordSupport" />
-              <label for="enableWordSupport">Word Support</label>
-            </div>
-          </div>
         </div>
 
         <div id="help" class="main-view" :class="{open: app.activeView === 'help'}">
@@ -1294,6 +1240,35 @@
             </div>
           </div>
           <div id="helpCards">
+            <div class="card">
+              <h3 class="card-title">How to <strong>Load / Save</strong> the Newsletter Options & Posts</h3>
+              <p>
+                <strong><small>If a newsletter has been saved locally you'll receive a popup in the bottom right to quickly load it.</small></strong>
+              </p>
+              <ol>
+                <li>Go to the <strong>Load / Save</strong> tab</li>
+                <li>Choose how you want to load/save the newsletter</li>
+                <li style="list-style: none">
+                  <ul>
+                    <li><strong>Local</strong> will let you load/save the newsletter in your web browser.</li>
+                    <li style="list-style: none">
+                      <ul style="list-style-type: square">
+                        <li><strong>Save the newsletter</strong> will save the newsletter in your web browser.</li>
+                        <li><strong>Load the newsletter</strong> will load the newsletter from your web browser.</li>
+                      </ul>
+                    </li>
+                    <li><strong>File</strong> will let you load/save the newsletter in a JSON file.</li>
+                    <li style="list-style: none">
+                      <ul style="list-style-type: square">
+                        <li><strong>Save the newsletter</strong> will save the newsletter in a JSON file.</li>
+                        <li><strong>Load the newsletter</strong> will load the newsletter from a JSON file.</li>
+                      </ul>
+                    </li>
+                    <li><strong>Legacy</strong> only use this if you need to load/save with separate JSON files<br /><small>(No longer supported)</small></li>
+                  </ul>
+                </li>
+              </ol>
+            </div>
             <div class="card">
               <h3 class="card-title">How to <strong>Setup</strong> the Newsletter</h3>
               <p>
@@ -1413,38 +1388,37 @@
               </div>
             </div>
             <div class="card">
-              <h3 class="card-title">How to use <strong>Analytics</strong> with the Newsletter</h3>
+              <h3 class="card-title">How to <strong>Submit</strong> for Compliance Review</h3>
               <p>
-                <strong><small>View the Analytics tab for more information on how to view the analytics</small></strong>
+                <strong><small>Always save your newsletter before submitting for compliance review, as the review process may take time.</small></strong>
               </p>
               <ol>
-                <li>Go to the <strong>Analytics</strong> tab</li>
-                <li>Find your Google Analytics Code by entering your website's URL and clicking <strong>Find Code</strong></li>
-                <li>
-                  Enter your Newsletter's name
-                  <small>(This can be something simliar to: Winter 2019)</small>
+                <li>Go to the <strong>Use Newsletter</strong> tab and click <strong>Download PDF</strong></li>
+                <li style="list-style: none">
+                  <ul style="list-style-type: square">
+                    <li>This creates a PDF version for compliance review</li>
+                  </ul>
                 </li>
-              </ol>
-            </div>
-            <div class="card">
-              <h3 class="card-title">How To View Analytics?</h3>
-              <ol>
-                <li>
-                  If you don't have access to your Google Analytics, please send our team at SiteForward an email requesting access<br /><small
-                    >Please include your Google Email in your request</small
-                  >
+                <li>Go to the <strong>Load / Save</strong> tab and save your newsletter</li>
+                <li style="list-style: none">
+                  <ul style="list-style-type: square">
+                    <li>You'll need to come back to make changes after the review</li>
+                    <li>Save locally (browser) or as a file on your computer</li>
+                  </ul>
                 </li>
-                <li>Open your Google Analytics Dashboard</li>
-                <li>Open your Events Overview tab<br /><small>Located under the Behaviour tab</small></li>
+                <li>Submit the PDF for compliance review in RedOak</li>
+                <li>Make any required compliance changes</li>
+                <li style="list-style: none">
+                  <ul style="list-style-type: square">
+                    <li>If you closed the page, reload your saved newsletter from the <strong>Load / Save</strong> tab</li>
+                    <li>Edit your newsletter as needed in the <strong>Edit Items</strong> tab</li>
+                  </ul>
+                </li>
+                <li>Once approved, you can use the newsletter from the <strong>Use Newsletter</strong> tab</li>
               </ol>
             </div>
             <div class="card">
               <h3 class="card-title">How to <strong>Use</strong> the Newsletter</h3>
-              <p>
-                <strong
-                  ><small>If you're planning to use the newsletter in MS Word make sure to enable MS Word Support in the Settings tab in the newsletter generator</small></strong
-                >
-              </p>
               <ol>
                 <li>Go to the <strong>Use Newsletter</strong> tab</li>
                 <li><strong>Copy Code</strong> will copy the code to your clipboard</li>
@@ -1462,35 +1436,6 @@
                   </ul>
                 </li>
                 <li>Paste the newsletter/code to where you need it</li>
-              </ol>
-            </div>
-            <div class="card">
-              <h3 class="card-title">How to <strong>Load / Save</strong> the Newsletter Options & Posts</h3>
-              <p>
-                <strong><small>If a newsletter has been saved locally you'll recieve a popup in the bottom right to quickly load it.</small></strong>
-              </p>
-              <ol>
-                <li>Go to the <strong>Load / Save</strong> tab</li>
-                <li>Choose how you want to load/save the newsletter</li>
-                <li style="list-style: none">
-                  <ul>
-                    <li><strong>Local</strong> will let you load/save the newsletter in your web browser.</li>
-                    <li style="list-style: none">
-                      <ul style="list-style-type: square">
-                        <li><strong>Save the newsletter</strong> will save the newsletter in your web browser.</li>
-                        <li><strong>Load the newsletter</strong> will load the newsletter from your web browser.</li>
-                      </ul>
-                    </li>
-                    <li><strong>File</strong> will let you load/save the newsletter in a JSON file.</li>
-                    <li style="list-style: none">
-                      <ul style="list-style-type: square">
-                        <li><strong>Save the newsletter</strong> will save the newsletter in a JSON file.</li>
-                        <li><strong>Load the newsletter</strong> will load the newsletter from a JSON file.</li>
-                      </ul>
-                    </li>
-                    <li><strong>Legacy</strong> only use this if you need to load/save with seperate JSON files<br /><small>(No longer supported)</small></li>
-                  </ul>
-                </li>
               </ol>
             </div>
             <!-- <div class="card">
