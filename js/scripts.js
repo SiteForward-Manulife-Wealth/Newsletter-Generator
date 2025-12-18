@@ -840,26 +840,59 @@ const app = new Vue({
       }
     },
 
-    //! Doesn't work cause it can't load images
     downloadPDF() {
-      // var tempDiv = document.createElement("div");
-      // tempDiv.innerHTML = this.$refs.newsletter.outerHTML;
-      // document.body.append(tempDiv);
-      // tempDiv.querySelectorAll('img').forEach(e =>{
-      //   getDataUrl(e, url => {
-      //     console.log(url);
-      //     e.src = url;
-      //   });
-      // });
-      // setTimeout(function(){
-
-      var doc = new jsPDF();
-      doc.html(document.getElementById("newsletterwrapper"), {
-        callback: function (doc) {
-          doc.save("Newsletter - " + this.newsletter.previewText + ".pdf");
-        },
+      sendInfo('Preparing newsletter for PDF export...');
+      
+      // Use Vue's $nextTick to ensure DOM is fully rendered
+      this.$nextTick(() => {
+        const element = this.$refs.newsletter;
+        const filename = `Newsletter - ${this.newsletter.previewText || 'Export'}.pdf`;
+        
+        const opt = {
+          margin: [10, 2, 10, 2],
+          filename: filename,
+          image: { 
+            type: 'jpeg', 
+            quality: 0.98 
+          },
+          html2canvas: { 
+            scale: 1.5,
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+            width: 800,
+            windowWidth: 800,
+            x: -5,
+            y: 0,
+            scrollX: 0,
+            scrollY: -window.scrollY,
+            backgroundColor: '#ffffff',
+            imageTimeout: 0,
+            removeContainer: true
+          },
+          jsPDF: { 
+            unit: 'mm', 
+            format: 'a4', 
+            orientation: 'portrait',
+            compress: true,
+            hotfixes: ['px_scaling']
+          },
+          pagebreak: { 
+            mode: ['avoid-all', 'css', 'legacy']
+          }
+        };
+        
+        sendInfo('Generating PDF... This may take a moment. Images may not appear due to security restrictions.');
+        
+        html2pdf().set(opt).from(element).save()
+          .then(() => {
+            sendSuccess('PDF downloaded successfully. Note: External images may not appear in the PDF due to browser security.');
+          })
+          .catch((error) => {
+            console.error('PDF Error:', error);
+            sendError('Failed to generate PDF. Please try again.', error);
+          });
       });
-      // }, 5000);
     },
     newsletterAsJSON() {
       return JSON.stringify({

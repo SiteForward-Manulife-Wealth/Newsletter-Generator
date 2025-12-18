@@ -25,6 +25,8 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto|Roboto+Condensed&display=swap" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <!-- VueJS -->
     <script src="https://unpkg.com/vue@2.7.16/dist/vue.min.js"></script>
@@ -117,8 +119,12 @@
               id="newsletter"
               width="800"
               align="center"
+              role="presentation"
+              border="0"
+              cellpadding="0"
+              cellspacing="0"
               class="no-borders"
-              style="border-collapse: collapse; box-sizing: border-box; overflow-wrap: break-word"
+              style="border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt;"
               :style="{'background-color': styles.backgroundColor}"
             >
               <tr>
@@ -128,51 +134,54 @@
                     id="newsletter-content"
                     align="center"
                     width="800"
+                    role="presentation"
+                    border="0"
+                    cellpadding="0"
                     class="no-borders"
-                    style="margin: 0 auto; border-collapse: seperate; border-spacing: 0 4px; box-sizing: border-box"
+                    style="margin: 0 auto; border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt;"
                     :cellspacing="styles.post.spacing"
                     :style="{'border-spacing': '0 '+styles.post.spacing+'px'}"
                   >
                     <!-- HEADER -->
                     <tr v-if="settings.header.style == '1'" id="newsletter-header">
-                      <td colspan="2" :style="{'border': styles.header.borderWidth+'px solid '+styles.header.borderColour}">
-                        <img :src="settings.header.image" width="800" alt="Newsletter Header" loading="lazy" />
+                      <td colspan="2" :style="{'border': styles.header.borderWidth+'px solid '+styles.header.borderColour}" style="padding: 0; line-height: 0;">
+                        <img :src="settings.header.image" width="800" alt="Newsletter Header" style="display: block; width: 100%; max-width: 800px; height: auto; border: 0;" />
                       </td>
                     </tr>
                     <tr v-if="settings.header.style == '2'" id="newsletter-header" style="text-align: center" :style="{'background-color': styles.header.backgroundColor}">
-                      <td valign="middle" style="padding: 20px; font-family: 'Muli', Helvetica, sans-serif" colspan="2">
+                      <td valign="middle" style="padding: 20px; font-family: 'Muli', Helvetica, Arial, sans-serif;" colspan="2">
                         <h2 style="margin: 0" :style="{color: styles.header.textColor}">{{settings.header.titles.title}}</h2>
                         <h4 style="margin: 0" :style="{color: styles.header.textColor}">{{settings.header.titles.subtitle}}</h4>
                       </td>
                     </tr>
-                    <tr v-if="settings.header.style == '3'" id="newsletter-header" style="align-items: left" :style="{'background-color': styles.header.backgroundColor}">
-                      <td valign="middle" style="padding: 0; font-family: 'Muli', Helvetica, sans-serif" colspan="2">
-                        <span v-html="settings.header.html" :style="{color: styles.header.textColor}"></span>
+                    <tr v-if="settings.header.style == '3'" id="newsletter-header" :style="{'background-color': styles.header.backgroundColor}">
+                      <td valign="middle" style="padding: 0; font-family: 'Muli', Helvetica, Arial, sans-serif;" colspan="2">
+                        <div v-html="settings.header.html" :style="{color: styles.header.textColor}"></div>
                       </td>
                     </tr>
 
                     <!-- CONTENT -->
                     <tr v-for="(post, pos) in posts">
-                      <td style="padding: 0" class="newsletter-body">
+                      <td :style="{'padding-top': styles.post.spacing+'px', 'padding-bottom': pos === posts.length - 1 ? styles.post.spacing+'px' : '0', 'padding-left': '0', 'padding-right': '0'}" class="newsletter-body">
                         <table
-                          valign="top"
+                          role="presentation"
                           class="no-borders"
                           :class="{'skeleton-preview': post.skeleton}"
                           width="800"
-                          style="align-items: left; display: inline-block; border-collapse: separate"
+                          style="width: 800px; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt;"
                           border="0"
                           cellspacing="0"
-                          cellpadding="20"
-                          :style="{'background-color': getPostStyle(pos, 'backgroundColor'),'border-radius': getPostStyle(pos, 'borderRadius')+'px'}"
+                          cellpadding="0"
+                          :style="{'background-color': getPostStyle(pos, 'backgroundColor'),'border-radius': getPostStyle(pos, 'borderRadius')+'px', '-webkit-border-radius': getPostStyle(pos, 'borderRadius')+'px', '-moz-border-radius': getPostStyle(pos, 'borderRadius')+'px'}"
                         >
                           <!-- 'box-shadow': post.shadow != null ? post.shadow ? '0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23)' : '' : styles.post.shadow ? '0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23)' : '', -->
 
                           <tr v-if="post.skeleton">
                             <!-- Skeleton preview post -->
-                            <td width="200" valign="top" style="display: inline-block; padding: 10px 10px 10px 10px">
+                            <td width="200" valign="top" style="width: 200px; padding: 20px;">
                               <div class="skeleton-loader" style="width: 200px; height: 120px;"></div>
                             </td>
-                            <td width="560" style="display: inline-block; padding: 10px 10px 20px 10px; font-family: 'Muli', Helvetica, sans-serif">
+                            <td width="560" style="width: 560px; padding: 20px; font-family: 'Muli', Helvetica, Arial, sans-serif; vertical-align: top;">
                               <div class="skeleton-loader" style="height: 24px; width: 60%; margin-bottom: 8px;"></div>
                               <div class="skeleton-loader" style="height: 14px; width: 100%; margin-bottom: 4px;"></div>
                               <div class="skeleton-loader" style="height: 14px; width: 100%; margin-bottom: 4px;"></div>
@@ -182,42 +191,41 @@
 
                           <tr v-else>
                             <!-- If image in post -->
-                            <td v-if="post.img" width="200" valign="top" style="display: inline-block; padding: 10px 10px 10px 10px">
+                            <td v-if="post.img" width="200" valign="top" style="width: 200px; padding: 20px;">
                               <!-- <div style="background-position: center center; background-repeat: no-repeat; background-size: contain; height: 200px; width: 100%" height="200px" width="100%"  :style="{'background-image': 'url('+post.img+')'}"> -->
-                              <img :src="post.img" height="auto" width="200" :alt="'Post #'+ pos + ' Thumbnail'" loading="lazy" />
+                              <img :src="post.img" height="auto" width="200" :alt="'Post #'+ pos + ' Thumbnail'" style="display: block; max-width: 200px; height: auto; border: 0;" />
                             </td>
-                            <td v-if="post.img" width="560" style="display: inline-block; padding: 10px 10px 20px 10px; font-family: 'Muli', Helvetica, sans-serif">
-                              <span style="margin-bottom: 0" v-html="post.title" :style="{'color': getPostStyle(pos, 'textColor')}"></span>
-                              <span
+                            <td v-if="post.img" width="560" style="width: 560px; padding: 20px; font-family: 'Muli', Helvetica, Arial, sans-serif; vertical-align: top;">
+                              <div style="margin-bottom: 0" v-html="post.title" :style="{'color': getPostStyle(pos, 'textColor')}"></div>
+                              <div
                                 v-if="post.date != '<p><br></p>'"
-                                style="font-size: 0.75em; opacity: 0.75"
+                                style="font-size: 0.75em;"
                                 :style="{'color': getPostStyle(pos, 'textColor')}"
                                 v-html="post.date"
-                              ></span>
-                              <span :style="{'color': getPostStyle(pos, 'textColor')}" v-html="post.desc"></span>
+                              ></div>
+                              <div :style="{'color': getPostStyle(pos, 'textColor')}" v-html="post.desc"></div>
 
-                              <table class="no-borders" v-if="post.link" width="100%" border="0" cellspacing="0" cellpadding="0">
+                              <table role="presentation" class="no-borders" v-if="post.link" width="100%" border="0" cellspacing="0" cellpadding="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
                                 <tr>
                                   <td>
                                     <table
+                                      role="presentation"
                                       class="no-borders"
                                       border="0"
                                       cellspacing="0"
                                       cellpadding="0"
+                                      style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;"
                                       :style="{'width': getPostStyle(pos, 'buttonWidth') + '%'}"
                                       :align="getPostStyle(pos, 'buttonAlign')"
                                     >
                                       <tr>
                                         <td
                                           :bgcolor="getPostStyle(pos, 'buttonWidth') != 0 ? getPostStyle(pos, 'buttonBackgroundColor') : ''"
-                                          style="padding: 12px 18px 12px 18px; border-radius: 3px"
+                                          style="padding: 12px 18px; border-radius: 3px; -webkit-border-radius: 3px; -moz-border-radius: 3px; mso-padding-alt: 12px 18px;"
                                           align="center"
                                         >
-                                          <a target="_blank" :href="post.link" style="text-decoration: none" :style="{'color': getPostStyle(pos, 'buttonTextColor')}"
-                                            ><strong style="font-weight: normal">
-                                              <span v-if="post.linkLabel != null && post.linkLabel != ''" v-html="post.linkLabel"></span>
-                                              <span v-else>Read More</span>
-                                            </strong></a
+                                          <a target="_blank" :href="post.link" style="text-decoration: none; display: inline-block; font-family: 'Muli', Helvetica, Arial, sans-serif; font-weight: bold;" :style="{'color': getPostStyle(pos, 'buttonTextColor')}"
+                                            ><span v-if="post.linkLabel != null && post.linkLabel != ''" v-html="post.linkLabel"></span><span v-else>Read More</span></a
                                           >
                                         </td>
                                       </tr>
@@ -228,41 +236,40 @@
                             </td>
 
                             <!-- If no image in post -->
-                            <td v-else width="780" style="display: inline-block; padding: 10px 10px 20px 10px; font-family: 'Muli', Helvetica, sans-serif" colspan="2">
-                              <span style="margin-bottom: 0" :style="getPostStyle(pos, 'textColor')" v-html="post.title"></span>
-                              <span
+                            <td v-else width="780" style="width: 780px; padding: 20px; font-family: 'Muli', Helvetica, Arial, sans-serif; vertical-align: top;" colspan="2">
+                              <div style="margin-bottom: 0" :style="{'color': getPostStyle(pos, 'textColor')}" v-html="post.title"></div>
+                              <div
                                 v-if="post.date != '<p><br></p>'"
-                                style="font-size: 0.75em; opacity: 0.75"
+                                style="font-size: 0.75em;"
                                 :style="{'color': getPostStyle(pos, 'textColor')}"
                                 v-html="post.date"
-                              ></span>
-                              <span :style="{'color': getPostStyle(pos, 'textColor')}" v-html="post.desc"></span>
-                              <table class="no-borders" v-if="post.link" width="100%" border="0" cellspacing="0" cellpadding="0">
+                              ></div>
+                              <div :style="{'color': getPostStyle(pos, 'textColor')}" v-html="post.desc"></div>
+                              <table role="presentation" class="no-borders" v-if="post.link" width="100%" border="0" cellspacing="0" cellpadding="0" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
                                 <tr>
                                   <td>
                                     <table
+                                      role="presentation"
                                       class="no-borders"
                                       border="0"
                                       cellspacing="0"
                                       cellpadding="0"
+                                      style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;"
                                       :style="{'width': getPostStyle(pos, 'buttonWidth') + '%'}"
                                       :align="getPostStyle(pos, 'buttonAlign')"
                                     >
                                       <tr>
                                         <td
                                           :bgcolor="getPostStyle(pos, 'buttonWidth') != 0 ? getPostStyle(pos, 'buttonBackgroundColor') : ''"
-                                          style="padding: 12px 18px 12px 18px; border-radius: 3px"
+                                          style="padding: 12px 18px; border-radius: 3px; -webkit-border-radius: 3px; -moz-border-radius: 3px; mso-padding-alt: 12px 18px;"
                                           align="center"
                                         >
                                           <a
                                             target="_blank"
                                             :href="post.link"
-                                            style="text-decoration: none; display: inline-block"
+                                            style="text-decoration: none; display: inline-block; font-family: 'Muli', Helvetica, Arial, sans-serif; font-weight: bold;"
                                             :style="{'color': getPostStyle(pos, 'buttonTextColor')}"
-                                            ><strong style="font-weight: normal">
-                                              <span v-if="post.linkLabel != null && post.linkLabel != ''" v-html="post.linkLabel"></span>
-                                              <span v-else>Read More</span>
-                                            </strong></a
+                                            ><span v-if="post.linkLabel != null && post.linkLabel != ''" v-html="post.linkLabel"></span><span v-else>Read More</span></a
                                           >
                                         </td>
                                       </tr>
@@ -279,7 +286,7 @@
                     <!-- FOOTER -->
 
                     <tr class="newsletter-footer" v-if="settings.footer.style == '1'">
-                      <td :style="{'background-color': styles.footer.backgroundColor}" valign="middle" style="padding: 20px; font-family: 'Muli', Helvetica, sans-serif">
+                      <td :style="{'background-color': styles.footer.backgroundColor}" valign="middle" style="padding: 20px; font-family: 'Muli', Helvetica, Arial, sans-serif;">
                         <p
                           v-if="settings.footer.preset.website || settings.footer.preset.social.facebook || settings.footer.preset.social.linkedin || settings.footer.preset.social.twitter"
                           style="margin: 0; margin-bottom: 10px; text-align: center; color: #fff"
@@ -359,8 +366,8 @@
                             :src="isLight(styles.footer.textColor) ? 'https://library.siteforward.ca/images/english/Manulife_Wealth_linear_reversed_rgb.png' : 'https://library.siteforward.ca/images/english/Manulife_Wealth_linear_rgb.png'"
                             width="350"
                             height="auto"
-                            loading="lazy"
                             alt="Manulife Wealth Logo"
+                            style="display: block; max-width: 350px; height: auto; border: 0; margin: 0 auto;"
                           /><br />
                           <em
                             ><a href="https://www.manulifewealth.ca/clients/en/corporate-disclaimers" target="_blank" :style="{color: styles.footer.linkColor}"
@@ -378,20 +385,20 @@
                       </td>
                     </tr>
                     <tr class="newsletter-footer" v-else-if="settings.footer.style == '2'">
-                      <td :style="{'background-color': styles.footer.backgroundColor}" valign="middle" style="padding: 20px; font-family: 'Muli', Helvetica, sans-serif">
-                        <span v-html="settings.footer.html" :style="{color: styles.footer.textColor}"></span>
+                      <td :style="{'background-color': styles.footer.backgroundColor}" valign="middle" style="padding: 20px; font-family: 'Muli', Helvetica, Arial, sans-serif;">
+                        <div v-html="settings.footer.html" :style="{color: styles.footer.textColor}"></div>
                       </td>
                     </tr>
 
                     <!-- ANALYTICS -->
                     <tr v-if="analyticsEnabled">
-                      <td>
+                      <td style="padding: 0; line-height: 0;">
                         <img
-                          alt="Analytics Loader"
+                          alt=""
                           width="1"
                           height="1"
-                          loading="lazy"
-                          :src="'https://www.google-analytics.com/collect?v=1&tid'+settings.analytics.code+'&cid=555&t=event&ec=Email+Newsletter&ea=open&el='+settings.analytics.name"
+                          style="display: block; width: 1px; height: 1px; border: 0;"
+                          :src="'https://www.google-analytics.com/collect?v=1&tid='+settings.analytics.code+'&cid=555&t=event&ec=Email+Newsletter&ea=open&el='+settings.analytics.name"
                         />
                       </td>
                     </tr>
@@ -1133,6 +1140,9 @@
                 </p>
                 <p>
                   <strong><i class="fas fa-file-download"></i> Download Preview</strong><br />
+                  Use this if you need to download the Newsletter as an HTML file.
+                </p><p>
+                  <strong><i class="fas fa-file-download"></i> Download PDF</strong><br />
                   Use this if you need to download a preview for Compliance.
                 </p>
               </span></span
@@ -1145,7 +1155,7 @@
               <button @click="copyNewsletterCode"><i class="fas fa-code"></i> Copy HTML Code</button>
               <button @click="copyNewsletter"><i class="fas fa-paste"></i> Copy Newsletter</button>
               <button @click="downloadHTML"><i class="fas fa-file-download"></i> &nbsp;Download Preview</button>
-              <!-- <button  @click="downloadPDF"><i class="fas fa-paste"></i> Download PDF</button> -->
+              <button @click="downloadPDF"><i class="fas fa-file-pdf"></i> Download PDF</button>
             </div>
           </div>
         </div>
