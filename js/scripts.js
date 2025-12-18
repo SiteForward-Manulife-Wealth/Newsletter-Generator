@@ -1,6 +1,6 @@
-let siteForwardNewsletterTemplate = ''
+const siteForwardNewsletterTemplate = '';
 
-let tinyMCE_settings = {
+const tinyMCE_settings = {
   selector: ".editable",
   menubar: false,
   inline: true,
@@ -37,25 +37,87 @@ let tinyMCE_settings = {
 };
 
 Vue.component("editable", {
-  template: '<div class="editable" @input="updateInput"></div>',
+  template: '<div class="editable" @input="updateInput" tabindex="0"></div>',
   props: ["value"],
+  data() {
+    return {
+      focusHandler: null,
+      clickHandler: null,
+      editorInitialized: false,
+      initTimeout: null,
+    };
+  },
   methods: {
     updateInput(e) {
       if (tinymce.get(this.$el.id) != null)
         this.$emit("input", tinymce.get(this.$el.id).getContent());
     },
+    initializeEditor() {
+      // Prevent double initialization
+      if (this.editorInitialized || tinymce.get(this.$el.id)) {
+        return;
+      }
+      
+      // Debounce initialization to prevent rapid triggers
+      if (this.initTimeout) {
+        clearTimeout(this.initTimeout);
+      }
+      
+      this.initTimeout = setTimeout(() => {
+        const el = this.$el;
+        if (tinymce.get(el.id) === null) {
+          const tinyMCE_settings_clone = Object.assign({}, tinyMCE_settings);
+          tinyMCE_settings_clone.selector = `#${el.id}`;
+          
+          // Add initialization callback to track state
+          tinyMCE_settings_clone.init_instance_callback = (editor) => {
+            this.editorInitialized = true;
+            editor.focus();
+          };
+          
+          tinymce.init(tinyMCE_settings_clone);
+        }
+        this.initTimeout = null;
+      }, 100); // 100ms debounce
+    },
   },
   mounted() {
-    let el = this.$el;
-    el.innerHTML = typeof this.value == "undefined" ? "" : this.value;
-    let tinyMCE_settings_clone = Object.assign({}, tinyMCE_settings);
-    tinyMCE_settings_clone.selector = "#" + el.id;
-    let mouseover = el.addEventListener("mouseover", function(){
-      if (tinymce.get(el.id) == null){
-        tinymce.init(tinyMCE_settings_clone)
-      }
-      e.removeEventListener(mouseover)
-    })
+    const el = this.$el;
+    el.innerHTML = typeof this.value === "undefined" ? "" : this.value;
+    
+    // Use focus and click events instead of mouseover for better UX
+    this.focusHandler = () => {
+      this.initializeEditor();
+    };
+    
+    this.clickHandler = () => {
+      this.initializeEditor();
+    };
+    
+    el.addEventListener("focus", this.focusHandler);
+    el.addEventListener("click", this.clickHandler);
+  },
+  beforeDestroy() {
+    // Clear any pending initialization
+    if (this.initTimeout) {
+      clearTimeout(this.initTimeout);
+    }
+    
+    // Remove event listeners if they still exist
+    if (this.focusHandler) {
+      this.$el.removeEventListener("focus", this.focusHandler);
+    }
+    if (this.clickHandler) {
+      this.$el.removeEventListener("click", this.clickHandler);
+    }
+    
+    // Destroy TinyMCE editor instance
+    const editor = tinymce.get(this.$el.id);
+    if (editor) {
+      editor.remove();
+    }
+    
+    this.editorInitialized = false;
   },
 });
 
@@ -67,20 +129,44 @@ Vue.component("popup", {
   data: function () {
     return {
       isOpen: false,
+      openHandler: null,
+      closeHandlers: [],
     };
   },
   mounted() {
-    let el = this.$el;
-    el.querySelector("i").addEventListener("click", function (event) {
+    const el = this.$el;
+    
+    this.openHandler = () => {
       el.classList.add("open");
-    });
+    };
+    
+    const openIcon = el.querySelector("i");
+    openIcon.addEventListener("click", this.openHandler);
+    
     el.querySelectorAll(".popup-outerWrapper, .popup-close i").forEach(
       (item) => {
-        item.addEventListener("click", function (event) {
-          if (event.target == item) el.classList.remove("open");
-        });
+        const closeHandler = (event) => {
+          if (event.target === item) el.classList.remove("open");
+        };
+        this.closeHandlers.push({ element: item, handler: closeHandler });
+        item.addEventListener("click", closeHandler);
       }
     );
+  },
+  beforeDestroy() {
+    // Clean up open handler
+    if (this.openHandler) {
+      const openIcon = this.$el.querySelector("i");
+      if (openIcon) {
+        openIcon.removeEventListener("click", this.openHandler);
+      }
+    }
+    
+    // Clean up close handlers
+    this.closeHandlers.forEach(({ element, handler }) => {
+      element.removeEventListener("click", handler);
+    });
+    this.closeHandlers = [];
   },
 });
 
@@ -193,7 +279,7 @@ Vue.component("searchbar", {
   },
 });
 
-var updateResizeHandle = new Event("updateresizehandle");
+const updateResizeHandle = new Event("updateresizehandle");
 Vue.component("resizehandle", {
   template: '<div class="resize-handle" @mousedown="down"></div>',
   props: ["othercontainer", "mincontainer", "minother"],
@@ -210,9 +296,9 @@ Vue.component("resizehandle", {
       document.querySelector("body").style = "";
     },
     move(e) {
-      var parent = this.$el.parentNode;
-      var otherContainer = document.querySelector(this.othercontainer);
-      var width = parent.offsetWidth - (e.clientX - parent.offsetLeft);
+      const parent = this.$el.parentNode;
+      const otherContainer = document.querySelector(this.othercontainer);
+      let width = parent.offsetWidth - (e.clientX - parent.offsetLeft);
 
       width = Math.min(window.innerWidth - this.minother, width);
       width = Math.max(this.mincontainer, width);
@@ -220,8 +306,8 @@ Vue.component("resizehandle", {
       this.updateWidths(width);
     },
     updateWidths(width) {
-      var parent = this.$el.parentNode;
-      var otherContainer = document.querySelector(this.othercontainer);
+      const parent = this.$el.parentNode;
+      const otherContainer = document.querySelector(this.othercontainer);
 
       if (
         !parent.classList.contains("closed") &&
@@ -229,26 +315,16 @@ Vue.component("resizehandle", {
       ) {
         if (!Number.isInteger(width)) width = parent.offsetWidth;
 
-        parent.style = "width: " + width + "; transition: none";
-        var sidebarWidth = app.app.sidebarStuck ? "260" : "80";
-        otherContainer.style =
-          "width: calc(calc(100% - " +
-          sidebarWidth +
-          "px) - " +
-          width +
-          "px); transition: none;";
+        parent.style = `width: ${width}px; transition: none`;
+        const sidebarWidth = app.app.sidebarStuck ? "260" : "80";
+        otherContainer.style = `width: calc(calc(100% - ${sidebarWidth}px) - ${width}px); transition: none;`;
 
-        setTimeout(function () {
-          parent.style = "width: " + width;
-          otherContainer.style =
-            "width: calc(calc(100% - " +
-            sidebarWidth +
-            "px) - " +
-            width +
-            "px);";
+        setTimeout(() => {
+          parent.style = `width: ${width}px`;
+          otherContainer.style = `width: calc(calc(100% - ${sidebarWidth}px) - ${width}px);`;
         }, 1);
       }
-      setTimeout(function () {
+      setTimeout(() => {
         if (
           parent.classList.contains("closed") ||
           parent.classList.contains("large")
@@ -262,15 +338,29 @@ Vue.component("resizehandle", {
   mounted() {
     document.addEventListener("updateresizehandle", this.updateWidths);
   },
+  beforeDestroy() {
+    // Clean up event listener
+    document.removeEventListener("updateresizehandle", this.updateWidths);
+    
+    // Clean up any active mousemove/mouseup listeners
+    document.removeEventListener("mousemove", this.move);
+    document.removeEventListener("mouseup", this.up);
+  },
 });
 
-let app = new Vue({
+const app = new Vue({
   el: "#body-wrapper",
   props: {},
   data: {
     renderKey: 0,
     posts: [],
     newsletterHTML: "",
+    loading: {
+      posts: false,
+      template: false,
+      newsletter: false,
+      analytics: false,
+    },
     app: {
       sidebarHover: false,
       sidebarStuck: false,
@@ -424,12 +514,34 @@ let app = new Vue({
       },
       deep: true,
     },
+    "settings.header.style": function(newVal) {
+      // When custom header (style 3) is selected, initialize TinyMCE
+      if (newVal === 3) {
+        this.$nextTick(() => {
+          const headerEditor = document.getElementById('header-html');
+          if (headerEditor && !tinymce.get('header-html')) {
+            headerEditor.click();
+          }
+        });
+      }
+    },
+    "settings.footer.style": function(newVal) {
+      // When custom footer (style 2) is selected, initialize TinyMCE
+      if (newVal === 2) {
+        this.$nextTick(() => {
+          const footerEditor = document.getElementById('footer-html');
+          if (footerEditor && !tinymce.get('footer-html')) {
+            footerEditor.click();
+          }
+        });
+      }
+    },
   },
   mounted() {
     document.querySelector(".preview-body").classList.add("loaded");
     this.stylesBackup = JSON.parse(JSON.stringify(this.styles));
 
-    var style = document.createElement("style");
+    const style = document.createElement("style");
     this.$refs.newsletter.prepend(style);
     
     this.$snotify.confirm("For quicker startup please choose one of the options below.", "Newsletter Design Generator", {
@@ -475,72 +587,77 @@ let app = new Vue({
     //Update settings to ensure no error on load
     updateData() {
       //Update useDisclaimer
-      if (typeof this.footer.preset.useDisclaimer == "undefined")
-        this.$set(this.footer.preset, "useDisclaimer", true);
+      if (typeof this.settings.footer.preset.useDisclaimer !== "undefined")
+        this.$set(this.settings.footer.preset, "useDisclaimer", true);
 
-      //Update Post Colours
-      if (typeof this.colors.posts == "undefined")
-        this.$set(this.colors, "posts", {});
-      if (typeof this.colors.posts.background == "undefined")
-        this.$set(this.colors.posts, "background", "#f3f3f3");
-      if (typeof this.colors.posts.text == "undefined")
-        this.$set(this.colors.posts, "text", "#000000");
+      //Update Post Colours - legacy migration (colors is now styles)
+      if (typeof this.styles.post === "undefined")
+        this.$set(this.styles, "post", {});
+      if (typeof this.styles.post.backgroundColor === "undefined")
+        this.$set(this.styles.post, "backgroundColor", "#f3f3f3");
+      if (typeof this.styles.post.textColor === "undefined")
+        this.$set(this.styles.post, "textColor", "#000000");
 
       //Update Header
-      if (typeof this.header.titles == "undefined")
-        this.$set(this.header, "titles", {});
-      if (typeof this.header.title != "undefined") {
-        this.$set(this.header.titles, "title", this.header.title);
-        delete this.header.title;
+      if (typeof this.settings.header.titles === "undefined")
+        this.$set(this.settings.header, "titles", {});
+      if (typeof this.settings.header.title !== "undefined") {
+        this.$set(this.settings.header.titles, "title", this.settings.header.title);
+        delete this.settings.header.title;
       }
-      if (typeof this.header.subtitle != "undefined") {
-        this.$set(this.header.titles, "subtitle", this.header.subtitle);
-        delete this.header.subtitle;
+      if (typeof this.settings.header.subtitle !== "undefined") {
+        this.$set(this.settings.header.titles, "subtitle", this.settings.header.subtitle);
+        delete this.settings.header.subtitle;
       }
 
       //Update Disclaimer
-      if (typeof this.footer.preset.useDisclaimer != "undefined")
-        this.$set(this.footer.preset, "disclaimer", {});
-      if (typeof this.footer.preset.disclaimer.enable == "undefined")
-        this.$set(this.footer.preset.disclaimer, "enable", true);
-      delete this.footer.preset.useDisclaimer;
+      if (typeof this.settings.footer.preset.useDisclaimer !== "undefined") {
+        this.$set(this.settings.footer.preset, "disclaimer", {});
+        delete this.settings.footer.preset.useDisclaimer;
+      }
+      
+      if (typeof this.settings.footer.preset.disclaimer === "undefined")
+        this.$set(this.settings.footer.preset, "disclaimer", {});
+        
+      if (typeof this.settings.footer.preset.disclaimer.enable === "undefined")
+        this.$set(this.settings.footer.preset.disclaimer, "enable", true);
 
-      if (typeof this.footer.preset.disclaimer.insuranceOBA == "undefined")
-        this.$set(this.footer.preset.disclaimer, "insuranceOBA", null);
+      if (typeof this.settings.footer.preset.disclaimer.insuranceOBA === "undefined")
+        this.$set(this.settings.footer.preset.disclaimer, "insuranceOBA", null);
 
-      if (typeof this.footer.preset.disclaimer.licenses == "undefined")
-        this.$set(this.footer.preset.disclaimer, "licenses", {});
+      if (typeof this.settings.footer.preset.disclaimer.licenses === "undefined")
+        this.$set(this.settings.footer.preset.disclaimer, "licenses", {});
 
-      if (typeof this.footer.preset.disclaimer.licenses.mfda == "undefined")
-        this.$set(this.footer.preset.disclaimer.licenses, "mfda", false);
-      if (typeof this.footer.preset.disclaimer.licenses.iiroc == "undefined")
-        this.$set(this.footer.preset.disclaimer.licenses, "iiroc", false);
+      if (typeof this.settings.footer.preset.disclaimer.licenses.mfda === "undefined")
+        this.$set(this.settings.footer.preset.disclaimer.licenses, "mfda", false);
+      if (typeof this.settings.footer.preset.disclaimer.licenses.iiroc === "undefined")
+        this.$set(this.settings.footer.preset.disclaimer.licenses, "iiroc", false);
 
-      if (typeof this.footer.preset.disclaimer.logo == "undefined")
-        this.$set(this.footer.preset.disclaimer, "logo", true);
+      if (typeof this.settings.footer.preset.disclaimer.logo === "undefined")
+        this.$set(this.settings.footer.preset.disclaimer, "logo", true);
 
-      if (typeof this.colors.background == "undefined")
-        this.$set(this.colors, "background", "#ffffff");
+      if (typeof this.styles.backgroundColor === "undefined")
+        this.$set(this.styles, "backgroundColor", "#ffffff");
 
-      if (typeof this.header.borderColor == "undefined")
-        this.$set(this.header, "borderColor", "#111111");
+      if (typeof this.styles.header === "undefined")
+        this.$set(this.styles, "header", {});
+        
+      if (typeof this.styles.header.borderColor === "undefined")
+        this.$set(this.styles.header, "borderColor", "#111111");
 
-      if (typeof this.header.borderWidth == "undefined")
-        this.$set(this.header, "borderWidth", 0);
+      if (typeof this.styles.header.borderWidth === "undefined")
+        this.$set(this.styles.header, "borderWidth", 0);
 
-      if (typeof this.styles.post == "undefined")
+      if (typeof this.styles.post === "undefined")
         this.$set(this.styles, "post", {});
 
-      if (typeof this.styles.post.borderRadius == "undefined")
+      if (typeof this.styles.post.borderRadius === "undefined")
         this.$set(this.styles.post, "borderRadius", 0);
 
-      if (typeof this.styles.button == "undefined")
-        this.$set(this.styles, "button", {});
-
-      if (typeof this.styles.button.align == "undefined")
-        this.$set(this.styles.button, "align", "left");
-      if (typeof this.styles.button.width == "undefined")
-        this.$set(this.styles.button, "width", 30);
+      if (typeof this.styles.post.buttonAlign === "undefined")
+        this.$set(this.styles.post, "buttonAlign", "left");
+      if (typeof this.styles.post.buttonWidth === "undefined")
+        this.$set(this.styles.post, "buttonWidth", 30);
     },
     get(obj, path) {
       return path.split(".").reduce(function (o, x) {
@@ -627,21 +744,21 @@ let app = new Vue({
 
           //Create Banner URL with settings
           let url = "https://banner.newsletter.siteforward.ca/?createNew=true";
-          for (let [key, value] of Object.entries(app.banner)) {
-            if (key == "color" || key == "shadowColor")
-              value = value.substring(1);
-            if (key == "align") {
-              let aligns = value.split(" ");
-              url +=
-                "&horizontalAlign=" + aligns[1] + "&verticalAlign=" + aligns[0];
-            } else if (value != null && value != 0 && value != false)
-              url += "&" + key + "=" + value;
+          for (const [key, value] of Object.entries(app.banner)) {
+            let processedValue = value;
+            if (key === "color" || key === "shadowColor")
+              processedValue = value.substring(1);
+            if (key === "align") {
+              const aligns = value.split(" ");
+              url += `&horizontalAlign=${aligns[1]}&verticalAlign=${aligns[0]}`;
+            } else if (processedValue !== null && processedValue !== 0 && processedValue !== false)
+              url += `&${key}=${processedValue}`;
           }
 
           //Load the image from the url
           app.$refs.bannerValidWrapper.classList.add("loading");
           app.$refs.bannerCreatedImage.src = url;
-          app.$refs.bannerCreatedImage.onload = function () {
+          app.$refs.bannerCreatedImage.onload = () => {
             sendSuccess("Custom banner image loaded");
             app.$refs.bannerValidWrapper.style.display = "block";
             app.$refs.bannerValidWrapper.classList.remove("loading");
@@ -662,25 +779,25 @@ let app = new Vue({
       }
 
       if (this.posts) {
-        this.posts.forEach((i) => {
+        this.posts.forEach((post) => {
           if (
-            i.title &&
-            i.title.indexOf("<") != 0 &&
-            i.title.lastIndexOf(">") != i.title.length - 1
+            post.title &&
+            post.title.indexOf("<") !== 0 &&
+            post.title.lastIndexOf(">") !== post.title.length - 1
           )
-            i.title = "<h2>" + i.title + "</h2>";
+            post.title = `<h2>${post.title}</h2>`;
           if (
-            i.date &&
-            i.date.indexOf("<") != 0 &&
-            i.date.lastIndexOf(">") != i.date.length - 1
+            post.date &&
+            post.date.indexOf("<") !== 0 &&
+            post.date.lastIndexOf(">") !== post.date.length - 1
           )
-            i.date = "<p>" + i.date + "</p>";
+            post.date = `<p>${post.date}</p>`;
           if (
-            i.desc &&
-            i.desc.indexOf("<") != 0 &&
-            i.desc.lastIndexOf(">") != i.desc.length - 1
+            post.desc &&
+            post.desc.indexOf("<") !== 0 &&
+            post.desc.lastIndexOf(">") !== post.desc.length - 1
           )
-            i.desc = "<p>" + i.desc + "</p>";
+            post.desc = `<p>${post.desc}</p>`;
         });
       }
     },
@@ -794,6 +911,12 @@ let app = new Vue({
       loadJSONFile((d) => this.loadOptions(d));
     },
     loadTemplate() {
+      if (this.loading.template) {
+        sendInfo("Already loading template...");
+        return;
+      }
+      
+      this.loading.template = true;
       sendInfo("Loading Template...");
       fetch("templates/Newsletter - Template 1.json")
         .then(res => res.json())
@@ -801,193 +924,233 @@ let app = new Vue({
           this.loadNewsletter(data);
         })
         .catch(error => sendError("Unable to load template. ", error))
+        .finally(() => {
+          this.loading.template = false;
+        });
     },
 
     //Load posts from blog page url
-    loadPostsFromURL() {
-      var url = this.$refs.loadPosts.value;
-      if (!url || url.length < 0) sendError("Invalid load Page's URL");
-      else {
+    async loadPostsFromURL() {
+      const url = this.$refs.loadPosts.value;
+      if (!url || url.length < 0) {
+        sendError("Invalid load Page's URL");
+        return;
+      }
+      
+      if (this.loading.posts) {
+        sendInfo("Already loading posts...");
+        return;
+      }
+      
+      this.loading.posts = true;
+      
+      try {
         sendInfo("Loading Posts");
-        fetch(url + "/feed.xml")
-          .then((res) => res.text())
-          .then((data) => {
-            let doc = new DOMParser().parseFromString(data, "application/xml");
-            //Search through the XML for the nodes
-            let channels = doc.querySelector("channel");
-            let items = channels.querySelectorAll("item");
-            let maxCount = this.$refs.loadPostsCount.value;
+        const response = await fetch(`${url}/feed.xml`);
+        const data = await response.text();
+        const doc = new DOMParser().parseFromString(data, "application/xml");
+        
+        //Search through the XML for the nodes
+        const channels = doc.querySelector("channel");
+        const items = channels.querySelectorAll("item");
+        const maxCount = this.$refs.loadPostsCount.value;
 
-            //For every blog found get the values and create a blog item
-            items.forEach((item, i) => {
-              if (i < maxCount) {
-                let post = { style: {} };
-                //Remove the prefix of the node values
-                let title = item.querySelector("title").innerHTML;
-                let titlePrefix = "<![CDATA[";
+        //For every blog found get the values and create a blog item
+        items.forEach((item, i) => {
+          if (i < maxCount) {
+            const post = { style: {} };
+            //Remove the prefix of the node values
+            let title = item.querySelector("title").innerHTML;
+            const titlePrefix = "<![CDATA[";
 
-                title = title.substr(
-                  titlePrefix.length,
-                  title.length - 3 - titlePrefix.length
-                );
-                let link = item.querySelector("link").innerHTML;
-                let img = item.getElementsByTagName("media:thumbnail")[0];
-                if (img) img = img.attributes[0].nodeValue;
-                let desc = item.querySelector("description");
-                if (desc) {
-                  desc = desc.innerHTML;
-                  desc = desc.substr(
-                    titlePrefix.length,
-                    desc.length - 3 - titlePrefix.length
-                  );
-                }
-
-                //Format the date
-                let date = item.querySelector("pubDate").innerHTML;
-                if (date) {
-                  date = date.split(" ");
-                  date = date.slice(0, 4);
-                  date = date.join(" ");
-                }
-
-                //Create the blog post item, and add it to the list
-                post.title = "<h2>" + title + "</h2>";
-                post.date = "<p>" + date + "</p>";
-                post.link = link;
-                post.img = img;
-                post.desc = "<p>" + desc + "</p>";
-                this.posts.push(post);
-              }
-            });
-
-            //Inform user if posts were found
-            if (items.length > 0) sendSuccess("Loaded Posts");
-            else
-              sendError(
-                "No posts were found, make sure you're not using the RSS Feed"
+            title = title.substr(
+              titlePrefix.length,
+              title.length - 3 - titlePrefix.length
+            );
+            const link = item.querySelector("link").innerHTML;
+            let img = item.getElementsByTagName("media:thumbnail")[0];
+            if (img) img = img.attributes[0].nodeValue;
+            let desc = item.querySelector("description");
+            if (desc) {
+              desc = desc.innerHTML;
+              desc = desc.substr(
+                titlePrefix.length,
+                desc.length - 3 - titlePrefix.length
               );
+            }
 
-            //Send call to Google Analytics
-            gtag("event", "Page", {
-              event_category: "Loading Posts",
-              event_label: url,
-              event_value: maxCount,
-            });
-          })
-          .catch((error) => sendError("Unable to load URL", error));
+            //Format the date
+            let date = item.querySelector("pubDate").innerHTML;
+            if (date) {
+              date = date.split(" ");
+              date = date.slice(0, 4);
+              date = date.join(" ");
+            }
+
+            //Create the blog post item, and add it to the list
+            post.title = `<h2>${title}</h2>`;
+            post.date = `<p>${date}</p>`;
+            post.link = link;
+            post.img = img;
+            post.desc = `<p>${desc}</p>`;
+            this.posts.push(post);
+          }
+        });
+
+        //Inform user if posts were found
+        if (items.length > 0) sendSuccess("Loaded Posts");
+        else
+          sendError(
+            "No posts were found, make sure you're not using the RSS Feed"
+          );
+
+        //Send call to Google Analytics
+        gtag("event", "Page", {
+          event_category: "Loading Posts",
+          event_label: url,
+          event_value: maxCount,
+        });
+      } catch (error) {
+        sendError("Unable to load URL", error);
+      } finally {
+        this.loading.posts = false;
       }
     },
 
     // Load single blog post
     //TODO: Add a way to load blog post similar to how twitter would share the page, look for title, desc, and thumbnail
-    loadPostFromURL() {
-      var url = this.$refs.loadPost.value;
-      if (!url || url.length < 0) sendError("Invalid load Page's URL");
-      else {
+    async loadPostFromURL() {
+      const url = this.$refs.loadPost.value;
+      if (!url || url.length < 0) {
+        sendError("Invalid load Page's URL");
+        return;
+      }
+      
+      if (this.loading.posts) {
+        sendInfo("Already loading posts...");
+        return;
+      }
+      
+      this.loading.posts = true;
+      
+      try {
         sendInfo("Loading Posts");
-        fetch(url)
-          .then((res) => res.text())
-          .then((data) => {
-            let post = { style: {} };
-            let doc = new DOMParser().parseFromString(data, "text/html");
+        const response = await fetch(url);
+        const data = await response.text();
+        const post = { style: {} };
+        const doc = new DOMParser().parseFromString(data, "text/html");
 
-            //See if the description can be found
-            let tags = doc.querySelector(".post-content").querySelectorAll("*");
-            let p = "";
-            for (let i = 0; i < tags.length; i++) {
-              if (
-                tags[i].nodeName == "IMG" &&
-                tags[i].alt != "image" &&
-                tags[i].alt != null &&
-                tags[i].alt.length != 0
-              ) {
-                p += tags[i].alt.trim() + " ";
-              } else if (
-                tags[i].textContent != null &&
-                tags[i].textContent.length != 0
-              )
-                p += tags[i].outerText.trim() + " ";
-            }
+        //See if the description can be found
+        const tags = doc.querySelector(".post-content").querySelectorAll("*");
+        let p = "";
+        for (let i = 0; i < tags.length; i++) {
+          if (
+            tags[i].nodeName === "IMG" &&
+            tags[i].alt !== "image" &&
+            tags[i].alt !== null &&
+            tags[i].alt.length !== 0
+          ) {
+            p += `${tags[i].alt.trim()} `;
+          } else if (
+            tags[i].textContent !== null &&
+            tags[i].textContent.length !== 0
+          )
+            p += `${tags[i].outerText.trim()} `;
+        }
 
-            let desc = p.split(" ");
-            desc = desc.slice(0, Math.min(desc.length, 30)).join(" ");
-            if (desc && desc[desc.length - 1].match(/\W/g))
-              desc = desc.substr(0, desc.length - 1);
-            if (desc) desc += "...";
-            post.desc = "<p>" + desc + "</p>";
+        let desc = p.split(" ");
+        desc = desc.slice(0, Math.min(desc.length, 30)).join(" ");
+        if (desc && desc[desc.length - 1].match(/\W/g))
+          desc = desc.substr(0, desc.length - 1);
+        if (desc) desc += "...";
+        post.desc = `<p>${desc}</p>`;
 
-            //Get the rest of the values as they will be found
-            post.title =
-              "<h2>" +
-              doc.querySelector(".post").querySelector(".post-title")
-                .innerHTML +
-              "</h2>";
-            post.link = url;
-            if (
-              doc.querySelector(".post").querySelector(".post-meta") &&
-              doc
-                .querySelector(".post")
-                .querySelector(".post-meta")
-                .querySelector("time")
-            )
-              post.date =
-                "<p>" +
-                doc
-                  .querySelector(".post")
-                  .querySelector(".post-meta")
-                  .querySelector("time").innerHTML +
-                "</p>";
+        //Get the rest of the values as they will be found
+        post.title = `<h2>${doc.querySelector(".post").querySelector(".post-title").innerHTML}</h2>`;
+        post.link = url;
+        if (
+          doc.querySelector(".post").querySelector(".post-meta") &&
+          doc
+            .querySelector(".post")
+            .querySelector(".post-meta")
+            .querySelector("time")
+        )
+          post.date = `<p>${doc.querySelector(".post").querySelector(".post-meta").querySelector("time").innerHTML}</p>`;
 
-            //Check for a thumbnail
-            if (doc.querySelector(".post").querySelector(".bg"))
-              post.img = doc
-                .querySelector(".post")
-                .querySelector(".bg")
-                .style.backgroundImage.replace('url("', "")
-                .replace('")', "");
-            if (doc.querySelector(".post").querySelector(".post-thumbnail"))
-              post.img = doc
-                .querySelector(".post")
-                .querySelector(".post-thumbnail")
-                .querySelector("img").src;
+        //Check for a thumbnail
+        if (doc.querySelector(".post").querySelector(".bg"))
+          post.img = doc
+            .querySelector(".post")
+            .querySelector(".bg")
+            .style.backgroundImage.replace('url("', "")
+            .replace('")', "");
+        if (doc.querySelector(".post").querySelector(".post-thumbnail"))
+          post.img = doc
+            .querySelector(".post")
+            .querySelector(".post-thumbnail")
+            .querySelector("img").src;
 
-            this.posts.push(post);
+        this.posts.push(post);
 
-            sendSuccess("Loaded Posts");
+        sendSuccess("Loaded Posts");
 
-            //Send google analytics call
-            gtag("event", "Post", {
-              event_category: "Loading Posts",
-              event_label: url,
-            });
-          })
-          .catch((error) => sendError("Unable to load URL", error));
+        //Send google analytics call
+        gtag("event", "Post", {
+          event_category: "Loading Posts",
+          event_label: url,
+        });
+      } catch (error) {
+        sendError("Unable to load URL", error);
+      } finally {
+        this.loading.posts = false;
       }
     },
 
     //Search a url for analytics code
-    findAnalyticsCode() {
+    async findAnalyticsCode() {
+      if (this.loading.analytics) {
+        sendInfo("Already searching...");
+        return;
+      }
+      
+      this.loading.analytics = true;
       sendInfo("Searching for Google Analytics Code");
       let websiteURL = this.$refs.analyticsWebURL.value;
-      if (websiteURL.indexOf("http") != 0) websiteURL = "https://" + websiteURL;
-      fetch(websiteURL)
-        .then((res) => res.text())
-        .then((data) => {
-          //Look for analytics code
-          let analyticsCode = data.match(/UA-\w*-1/g);
-          this.settings.analytics.code = analyticsCode;
+      if (websiteURL.indexOf("http") !== 0) websiteURL = `https://${websiteURL}`;
+      
+      try {
+        const response = await fetch(websiteURL);
+        const data = await response.text();
+        
+        //Look for analytics code
+        const analyticsCode = data.match(/UA-\w*-1/g);
+        this.settings.analytics.code = analyticsCode;
 
-          if (analyticsCode != null)
-            sendSuccess("Found Analytics Code: " + analyticsCode);
-          else sendError("Unable to find Google Analytics Code");
-        })
-        .catch((error) =>
-          sendError("Unable to find Google Analytics Code", error)
-        );
+        if (analyticsCode !== null)
+          sendSuccess(`Found Analytics Code: ${analyticsCode}`);
+        else sendError("Unable to find Google Analytics Code");
+      } catch (error) {
+        sendError("Unable to find Google Analytics Code", error);
+      } finally {
+        this.loading.analytics = false;
+      }
     },
 
     forceRerender() {
-      tinymce.remove()
+      // Properly remove all TinyMCE editors with cleanup
+      const editors = tinymce.get();
+      if (editors) {
+        if (Array.isArray(editors)) {
+          editors.forEach(editor => {
+            if (editor) editor.remove();
+          });
+        } else {
+          editors.remove();
+        }
+      } else {
+        // Fallback to remove all
+        tinymce.remove();
+      }
       this.app.forceRerender = !this.app.forceRerender;
     },
 
@@ -1017,17 +1180,17 @@ let app = new Vue({
       else return this.get(this.styles.post, key);
     },
 
-    //Edit post
+    //Edit post with debouncing
     editPost(pos, key, value) {
-      let updateNotRender = this.has(this.posts[pos], key);
-
       // If currently on cooldown - reset cooldown
-      if (this.newsletter.editPostTimer)
+      if (this.newsletter.editPostTimer) {
         clearTimeout(this.newsletter.editPostTimer);
+      }
+      
       this.newsletter.editPostTimer = setTimeout(() => {
         this.set(this.posts[pos], key, value);
-
         this.forceRerender();
+        this.newsletter.editPostTimer = null;
       }, 250);
     },
 
@@ -1120,19 +1283,46 @@ let app = new Vue({
   updated() {
     this.newsletterHTML = this.$refs.newsletter.outerHTML;
   },
+  beforeDestroy() {
+    // Clean up any remaining TinyMCE editors
+    const editors = tinymce.get();
+    if (editors) {
+      if (Array.isArray(editors)) {
+        editors.forEach(editor => {
+          if (editor) editor.remove();
+        });
+      }
+    }
+    
+    // Clean up snotify backdrop listener
+    const backdrop = document.querySelector(".snotify-backdrop");
+    if (backdrop && this.backdropHandler) {
+      backdrop.removeEventListener("click", this.backdropHandler);
+    }
+  },
 });
-setTimeout(()=>
-  document.querySelector(".snotify-backdrop").addEventListener("click", function(e){
-    app.$snotify.clear()
-    e.target.remove()
-  }), 1
-)
+
+// Setup backdrop handler with proper cleanup
+setTimeout(() => {
+  const backdrop = document.querySelector(".snotify-backdrop");
+  if (backdrop) {
+    const backdropHandler = function(e) {
+      app.$snotify.clear();
+      e.target.remove();
+    };
+    backdrop.addEventListener("click", backdropHandler);
+    // Store handler for cleanup
+    if (app) {
+      app.backdropHandler = backdropHandler;
+    }
+  }
+}, 1);
 
 
 // Load JSON File
 function loadJSONFile(cb) {
-  var div = document.createElement("div"),
-    input = document.createElement("input");
+  const div = document.createElement("div");
+  const input = document.createElement("input");
   input.type = "file";
   div.style.width = "0";
   div.style.height = "0";
@@ -1140,14 +1330,14 @@ function loadJSONFile(cb) {
   input.accept = "application/JSON";
   document.body.appendChild(div);
   div.appendChild(input);
-  var ev = new MouseEvent("click", {});
+  const ev = new MouseEvent("click", {});
   input.dispatchEvent(ev);
-  input.addEventListener("change", function (e) {
-    let file = e.target.files[0];
-    let reader = new FileReader();
+  input.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    const reader = new FileReader();
     reader.readAsText(file);
-    reader.onload = function () {
-      let res = JSON.parse(reader.result);
+    reader.onload = () => {
+      const res = JSON.parse(reader.result);
       cb(res);
       document.body.removeChild(div);
     };
@@ -1156,10 +1346,10 @@ function loadJSONFile(cb) {
 
 //Export JSON File
 function exportJSONToFile(obj, fileName) {
-  var file = new File([obj], fileName, { type: "text/json" });
-  var blobUrl = (URL || webkitURL).createObjectURL(file);
-  var div = document.createElement("div"),
-    anch = document.createElement("a");
+  const file = new File([obj], fileName, { type: "text/json" });
+  const blobUrl = (URL || webkitURL).createObjectURL(file);
+  const div = document.createElement("div");
+  const anch = document.createElement("a");
 
   document.body.appendChild(div);
   div.appendChild(anch);
@@ -1170,7 +1360,7 @@ function exportJSONToFile(obj, fileName) {
   anch.href = blobUrl;
   anch.download = fileName;
 
-  var ev = new MouseEvent("click", {});
+  const ev = new MouseEvent("click", {});
   anch.dispatchEvent(ev);
   document.body.removeChild(div);
 }
@@ -1180,30 +1370,31 @@ function isLightColor(color) {
   // Check the format of the color, HEX or RGB?
   if (!color) return false;
 
+  let r, g, b;
+  
   if (color.match(/^rgb/)) {
-    // If HEX --> store the red, green, blue values in separate variables
-    color = color.match(
+    // If RGB --> store the red, green, blue values in separate variables
+    const match = color.match(
       /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/
     );
 
-    r = color[1];
-    g = color[2];
-    b = color[3];
+    r = match[1];
+    g = match[2];
+    b = match[3];
   } else {
-    // If RGB --> Convert it to HEX: http://gist.github.com/983661
-    color = +("0x" + color.slice(1).replace(color.length < 5 && /./g, "$&$&"));
+    // If HEX --> Convert it to RGB: http://gist.github.com/983661
+    const hex = +("0x" + color.slice(1).replace(color.length < 5 && /./g, "$&$&"));
 
-    r = color >> 16;
-    g = (color >> 8) & 255;
-    b = color & 255;
+    r = hex >> 16;
+    g = (hex >> 8) & 255;
+    b = hex & 255;
   }
 
   // HSP equation from http://alienryderflex.com/hsp.html
-  hsp = Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
+  const hsp = Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
 
   // Using the HSP value, determine whether the color is light or dark
-  if (hsp > 127.5) return true;
-  else return false;
+  return hsp > 127.5;
 }
 
 //Copy text to clipboard
@@ -1236,11 +1427,11 @@ function copyTextToClipboard(text) {
   return successful;
 }
 
-//Select the Newsleter
+//Select the Newsletter
 function selectElementContents(el) {
-  let body = document.body,
-    range,
-    sel;
+  const body = document.body;
+  let range, sel;
+  
   if (document.createRange && window.getSelection) {
     range = document.createRange();
     sel = window.getSelection();
@@ -1256,21 +1447,21 @@ function selectElementContents(el) {
 
 //Move items in array
 function moveItem(array, from, to) {
-  let f = array.splice(from, 1)[0];
-  array.splice(to, 0, f);
+  const item = array.splice(from, 1)[0];
+  array.splice(to, 0, item);
   return array;
 }
 
 //Send Error Popup
 function sendError(msg, er) {
   app.$snotify.error(msg);
-  console.log("Error: " + er ? er : msg);
+  console.log(`Error: ${er || msg}`);
 }
 
 //Send Success Popup
 function sendSuccess(msg) {
   app.$snotify.success(msg);
-  console.log("Success: " + msg);
+  console.log(`Success: ${msg}`);
 }
 
 //Delay function
@@ -1285,7 +1476,7 @@ function delay(fn, ms) {
 //Send Info Popup
 function sendInfo(msg) {
   app.$snotify.info(msg);
-  console.log("Info: " + msg);
+  console.log(`Info: ${msg}`);
 }
 
 //Add Splice to strings
@@ -1298,11 +1489,11 @@ if (!String.prototype.splice) {
 }
 
 function getDataUrl(e, cb) {
-  let canvas = document.createElement("canvas");
-  let ctx = canvas.getContext("2d");
-  let img = new Image();
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  const img = new Image();
 
-  img.onload = function () {
+  img.onload = () => {
     canvas.width = img.width;
     canvas.height = img.height;
     ctx.drawImage(img, 0, 0);
@@ -1310,18 +1501,18 @@ function getDataUrl(e, cb) {
   };
 
   img.setAttribute("crossOrigin", "Anonymous");
-  img.src = "https://cors-anywhere.herokuapp.com/" + e.src;
+  // Note: cors-anywhere.herokuapp.com is deprecated - this needs to be replaced
+  img.src = `https://cors-anywhere.herokuapp.com/${e.src}`;
 }
 
-function downloadInnerHtml(filename, elId, mimeType) {
-  var elHtml = document.getElementById(elId).innerHTML;
-  var link = document.createElement("a");
-  mimeType = mimeType || "text/plain";
+function downloadInnerHtml(filename, elId, mimeType = "text/plain") {
+  const elHtml = document.getElementById(elId).innerHTML;
+  const link = document.createElement("a");
 
   link.setAttribute("download", filename);
   link.setAttribute(
     "href",
-    "data:" + mimeType + ";charset=utf-8," + encodeURIComponent(elHtml)
+    `data:${mimeType};charset=utf-8,${encodeURIComponent(elHtml)}`
   );
   link.click();
 }

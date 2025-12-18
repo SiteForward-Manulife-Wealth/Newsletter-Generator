@@ -27,7 +27,7 @@
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
     <!-- VueJS -->
-    <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://unpkg.com/vue@2.7.16/dist/vue.js"></script>
 
     <!-- TinyMCE -->
     <script src="https://cdn.tiny.cloud/1/eqepoqfy8y9ftr5kx84v4zm1og0ptew3yuwviio2jzd1meo0/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
@@ -136,7 +136,7 @@
                     <!-- HEADER -->
                     <tr v-if="settings.header.style == '1'" id="newsletter-header">
                       <td colspan="2" :style="{'border': styles.header.borderWidth+'px solid '+styles.header.borderColour}">
-                        <img :src="settings.header.image" width="800" alt="Newsletter Header" />
+                        <img :src="settings.header.image" width="800" alt="Newsletter Header" loading="lazy" />
                       </td>
                     </tr>
                     <tr v-if="settings.header.style == '2'" id="newsletter-header" style="text-align: center" :style="{'background-color': styles.header.backgroundColor}">
@@ -170,7 +170,7 @@
                             <!-- If image in post -->
                             <td v-if="post.img" width="200" valign="top" style="display: inline-block; padding: 10px 10px 10px 10px">
                               <!-- <div style="background-position: center center; background-repeat: no-repeat; background-size: contain; height: 200px; width: 100%" height="200px" width="100%"  :style="{'background-image': 'url('+post.img+')'}"> -->
-                              <img :src="post.img" height="auto" width="200" :alt="'Post #'+ pos + ' Thumbnail'" />
+                              <img :src="post.img" height="auto" width="200" :alt="'Post #'+ pos + ' Thumbnail'" loading="lazy" />
                             </td>
                             <td v-if="post.img" width="560" style="display: inline-block; padding: 10px 10px 20px 10px; font-family: 'Muli', Helvetica, sans-serif">
                               <span style="margin-bottom: 0" v-html="post.title" :style="{'color': getPostStyle(pos, 'textColor')}"></span>
@@ -345,6 +345,8 @@
                             :src="isLight(styles.footer.textColor) ? 'https://library.siteforward.ca/images/english/Manulife_Wealth_linear_reversed_rgb.png' : 'https://library.siteforward.ca/images/english/Manulife_Wealth_linear_rgb.png'"
                             width="350"
                             height="auto"
+                            loading="lazy"
+                            alt="Manulife Wealth Logo"
                           /><br />
                           <em
                             ><a href="https://www.manulifewealth.ca/clients/en/corporate-disclaimers" target="_blank" :style="{color: styles.footer.linkColor}"
@@ -374,6 +376,7 @@
                           alt="Analytics Loader"
                           width="1"
                           height="1"
+                          loading="lazy"
                           :src="'https://www.google-analytics.com/collect?v=1&tid'+settings.analytics.code+'&cid=555&t=event&ec=Email+Newsletter&ea=open&el='+settings.analytics.name"
                         />
                       </td>
@@ -533,7 +536,7 @@
               <div class="accordion-content">
                 <div class="form-item border split even">
                   <div>
-                    <editable :key="app.forceRerender" :id="footer-preset-name" v-model="settings.footer.preset.name" :value="settings.footer.preset.name"> </editable>
+                    <editable :key="app.forceRerender" id="footer-preset-name" v-model="settings.footer.preset.name" :value="settings.footer.preset.name"> </editable>
                     <label for="footer-preset-name">Trade Name / OBA / Name</label>
                   </div>
                   <div>
@@ -833,7 +836,7 @@
                     </div>
                   </div>
                   <div class="post">
-                    <img class="post-img" v-if="post.img" :src="post.img" :alt="'Post #'+ pos + ' Thumbnail'" />
+                    <img class="post-img" v-if="post.img" :src="post.img" :alt="'Post #'+ pos + ' Thumbnail'" loading="lazy" />
                     <div class="data">
                       <div class="form-item border" :style="{'color':getPostStyle(pos, 'textColor')}">
                         <editable :key="app.forceRerender" :id="'post-title-'+pos" v-model="post.title" :value="post.title"> </editable>
@@ -1073,7 +1076,7 @@
                 </div>
               </div>
               <div class="col col-left">
-                <img class="template-thumbnail" src="imgs/template.png" alt="Template Thumbnail" />
+                <img class="template-thumbnail" src="imgs/template.png" alt="Template Thumbnail" loading="lazy" />
               </div>
             </div>
           </div>
@@ -1231,7 +1234,7 @@
               <hr />
               <div class="row middle">
                 <div class="col col-3" style="text-align: center; position: relative">
-                  <img width="100%" style="max-width: 800px; border: 1px solid #eee" ref="bannerCreatedImage" alt="Created Banner" />
+                  <img width="100%" style="max-width: 800px; border: 1px solid #eee" ref="bannerCreatedImage" alt="Created Banner" loading="lazy" />
                   <div class="bannerCreatedImageLoadingWrapper">
                     <i class="fas fa-circle-notch fa-2x"></i>
                   </div>
