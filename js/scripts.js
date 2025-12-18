@@ -523,7 +523,6 @@ const app = new Vue({
         {
           text: "Start from Scratch",
           action: (toast) => {
-            console.log("Nothing Done")
             this.$snotify.remove(toast.id);
             document.querySelector(".snotify-backdrop").remove()
           }
@@ -1349,7 +1348,6 @@ const app = new Vue({
             const footerElement = this.$refs.newsletter.querySelector(".newsletter-footer");
             if (footerElement) {
               const footerHTML = footerElement.outerHTML;
-              console.log("Captured footer HTML:", footerHTML);
               
               // Switch back to custom and set the HTML
               this.settings.footer.style = 2;
@@ -1547,13 +1545,11 @@ function moveItem(array, from, to) {
 //Send Error Popup
 function sendError(msg, er) {
   app.$snotify.error(msg);
-  console.log(`Error: ${er || msg}`);
 }
 
 //Send Success Popup
 function sendSuccess(msg) {
   app.$snotify.success(msg);
-  console.log(`Success: ${msg}`);
 }
 
 //Delay function
@@ -1568,7 +1564,6 @@ function delay(fn, ms) {
 //Send Info Popup
 function sendInfo(msg) {
   app.$snotify.info(msg);
-  console.log(`Info: ${msg}`);
 }
 
 //Validate URL format
@@ -1628,8 +1623,6 @@ async function fetchWithFallback(url, timeout = 5000) {
     
     return await response.text();
   } catch (error) {
-    console.log('Direct fetch failed, trying CORS proxies:', error.message);
-    
     // List of CORS proxy services to try as fallbacks
     const proxies = [
       // AllOrigins
@@ -1656,12 +1649,8 @@ async function fetchWithFallback(url, timeout = 5000) {
           return await response.text();
         }
       } catch (proxyError) {
-        console.log(`Proxy ${i + 1} failed for ${urlToFetch}:`, proxyError.message);
-        
         // If this is the last proxy and we converted from HTTP, try original HTTP URL
         if (i === proxies.length - 1 && isHttp) {
-          console.log(`All HTTPS attempts failed, falling back to HTTP: ${url}`);
-          
           // Try direct HTTP fetch first
           try {
             const response = await fetchWithTimeout(url, {}, timeout);
@@ -1672,8 +1661,6 @@ async function fetchWithFallback(url, timeout = 5000) {
             
             return await response.text();
           } catch (httpDirectError) {
-            console.log('Direct HTTP fetch failed, trying HTTP with proxies');
-            
             // Try proxies with HTTP
             for (let j = 0; j < proxies.length; j++) {
               try {
@@ -1691,7 +1678,6 @@ async function fetchWithFallback(url, timeout = 5000) {
                   return await response.text();
                 }
               } catch (httpProxyError) {
-                console.log(`HTTP proxy ${j + 1} failed:`, httpProxyError.message);
                 if (j === proxies.length - 1) {
                   throw httpProxyError;
                 }
