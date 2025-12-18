@@ -446,30 +446,31 @@ const app = new Vue({
         },
       },
     },
-    bannerCreationTimer: null,
-    banner: {
-      align: "center center",
-      image: null,
-      title: null,
-      titleSize: 30,
-      subtitle: null,
-      subtitleSize: 17,
-      titleSpacing: 20,
-      textAlign: "center",
-      color: "#000000",
-      offsetY: 0,
-      offsetX: 0,
-      logo: null,
-      logoX: 0,
-      logoY: 0,
-      logoWidth: 300,
-      shadowColor: "#333333",
-      shadowEnabled: false,
-      shadowOffsetX: 1,
-      shadowOffsetY: 1,
-      shadowBlur: 5,
-      displayGrid: false,
-    },
+    // PHP Banner Generation - Commented Out
+    // bannerCreationTimer: null,
+    // banner: {
+    //   align: "center center",
+    //   image: null,
+    //   title: null,
+    //   titleSize: 30,
+    //   subtitle: null,
+    //   subtitleSize: 17,
+    //   titleSpacing: 20,
+    //   textAlign: "center",
+    //   color: "#000000",
+    //   offsetY: 0,
+    //   offsetX: 0,
+    //   logo: null,
+    //   logoX: 0,
+    //   logoY: 0,
+    //   logoWidth: 300,
+    //   shadowColor: "#333333",
+    //   shadowEnabled: false,
+    //   shadowOffsetX: 1,
+    //   shadowOffsetY: 1,
+    //   shadowBlur: 5,
+    //  displayGrid: false,
+    // },
     stylesBackup: {},
   },
   computed: {
@@ -500,7 +501,7 @@ const app = new Vue({
         //If changed to any of the following close the preview window
         if (
           activeView == "help" ||
-          activeView == "banner" ||
+          // activeView == "banner" || // PHP Banner Generation - Commented Out
           activeView == "settings"
           // || activeView == "load"
         )
@@ -508,12 +509,13 @@ const app = new Vue({
         else preview.classList.remove("closed");
       }, 1);
     },
-    banner: {
-      handler(val) {
-        this.updateCreatedBanner();
-      },
-      deep: true,
-    },
+    // PHP Banner Generation - Commented Out
+    // banner: {
+    //   handler(val) {
+    //     this.updateCreatedBanner();
+    //   },
+    //   deep: true,
+    // },
     "settings.header.style": function(newVal) {
       // When custom header (style 3) is selected, initialize TinyMCE
       if (newVal === 3) {
@@ -686,86 +688,88 @@ const app = new Vue({
       schema[pathSplit[pathSplitLength - 1]] = value;
     },
 
-    //Download custom tool banner
-    downloadCustomBanner() {
-      //Create canvas
-      let canvas = document.createElement("canvas");
-      let ctx = canvas.getContext("2d");
-      let img = new Image();
+    // PHP Banner Generation - Commented Out
+    // //Download custom tool banner
+    // downloadCustomBanner() {
+    //   //Create canvas
+    //   let canvas = document.createElement("canvas");
+    //   let ctx = canvas.getContext("2d");
+    //   let img = new Image();
 
-      //When image load - draw image, get URL
-      img.onload = function () {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
-        let url = canvas.toDataURL();
+    //   //When image load - draw image, get URL
+    //   img.onload = function () {
+    //     canvas.width = img.width;
+    //     canvas.height = img.height;
+    //     ctx.drawImage(img, 0, 0);
+    //     let url = canvas.toDataURL();
 
-        //Create link to download image
-        var div = document.createElement("div"),
-          anch = document.createElement("a");
-        document.body.appendChild(div);
-        div.appendChild(anch);
+    //     //Create link to download image
+    //     var div = document.createElement("div"),
+    //       anch = document.createElement("a");
+    //     document.body.appendChild(div);
+    //     div.appendChild(anch);
 
-        anch.innerHTML = "&nbsp;";
-        div.style.width = "0";
-        div.style.height = "0";
-        anch.href = url;
-        anch.download = "Custom-Banner.png";
+    //     anch.innerHTML = "&nbsp;";
+    //     div.style.width = "0";
+    //     div.style.height = "0";
+    //     anch.href = url;
+    //     anch.download = "Custom-Banner.png";
 
-        //Trigger click event on link
-        var ev = new MouseEvent("click", {});
-        anch.dispatchEvent(ev);
-        document.body.removeChild(div);
-        document.body.removeChild(canvas);
+    //     //Trigger click event on link
+    //     var ev = new MouseEvent("click", {});
+    //     anch.dispatchEvent(ev);
+    //     document.body.removeChild(div);
+    //     document.body.removeChild(canvas);
 
-        //Send analytics call
-        gtag("event", "Tools", {
-          event_category: "Custom Banner",
-          event_label: url,
-        });
-      };
+    //     //Send analytics call
+    //     gtag("event", "Tools", {
+    //       event_category: "Custom Banner",
+    //       event_label: url,
+    //     });
+    //   };
 
-      //Enable crossOrigin - set image src
-      img.setAttribute("crossOrigin", "anonymous");
-      img.src = app.$refs.bannerCreatedImage.src.replace(
-        "&displayGrid=true",
-        ""
-      );
-    },
+    //   //Enable crossOrigin - set image src
+    //   img.setAttribute("crossOrigin", "anonymous");
+    //   img.src = app.$refs.bannerCreatedImage.src.replace(
+    //     "&displayGrid=true",
+    //     ""
+    //   );
+    // },
 
-    //Update the tool banner
-    updateCreatedBanner() {
-      //If an image is provided
-      if (this.banner.image) {
-        //If currently on cooldown - reset cooldown
-        if (this.bannerCreationTimer) clearTimeout(this.bannerCreationTimer);
-        this.bannerCreationTimer = setTimeout(() => {
-          sendInfo("Loading custom banner image");
+    // PHP Banner Generation - Commented Out
+    // //Update the tool banner
+    // updateCreatedBanner() {
+    //   //If an image is provided
+    //   if (this.banner.image) {
+    //     //If currently on cooldown - reset cooldown
+    //     if (this.bannerCreationTimer) clearTimeout(this.bannerCreationTimer);
+    //     this.bannerCreationTimer = setTimeout(() => {
+    //       sendInfo("Loading custom banner image");
 
-          //Create Banner URL with settings
-          let url = "https://banner.newsletter.siteforward.ca/?createNew=true";
-          for (const [key, value] of Object.entries(app.banner)) {
-            let processedValue = value;
-            if (key === "color" || key === "shadowColor")
-              processedValue = value.substring(1);
-            if (key === "align") {
-              const aligns = value.split(" ");
-              url += `&horizontalAlign=${aligns[1]}&verticalAlign=${aligns[0]}`;
-            } else if (processedValue !== null && processedValue !== 0 && processedValue !== false)
-              url += `&${key}=${processedValue}`;
-          }
+    //       //Create Banner URL with settings
+    //       let url = "https://banner.newsletter.siteforward.ca/?createNew=true";
+    //       for (const [key, value] of Object.entries(app.banner)) {
+    //         let processedValue = value;
+    //         if (key === "color" || key === "shadowColor")
+    //           processedValue = value.substring(1);
+    //         if (key === "align") {
+    //           const aligns = value.split(" ");
+    //           url += `&horizontalAlign=${aligns[1]}&verticalAlign=${aligns[0]}`;
+    //         } else if (processedValue !== null && processedValue !== 0 && processedValue !== false)
+    //           url += `&${key}=${processedValue}`;
+    //       }
 
-          //Load the image from the url
-          app.$refs.bannerValidWrapper.classList.add("loading");
-          app.$refs.bannerCreatedImage.src = url;
-          app.$refs.bannerCreatedImage.onload = () => {
-            sendSuccess("Custom banner image loaded");
-            app.$refs.bannerValidWrapper.style.display = "block";
-            app.$refs.bannerValidWrapper.classList.remove("loading");
-          };
-        }, 500);
-      }
-    },
+    //       //Load the image from the url
+    //       app.$refs.bannerValidWrapper.classList.add("loading");
+    //       app.$refs.bannerCreatedImage.src = url;
+    //       app.$refs.bannerCreatedImage.onload = () => {
+    //         sendSuccess("Custom banner image loaded");
+    //         app.$refs.bannerValidWrapper.style.display = "block";
+    //         app.$refs.bannerValidWrapper.classList.remove("loading");
+    //       };
+    //     }, 500);
+    //   }
+    // },
     //Load posts
     loadPosts(posts) {
       if ((!posts || posts.target) && localStorage.posts)
