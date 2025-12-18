@@ -420,8 +420,7 @@
               ><span class="card-title-help" style="width: 300px">
                 <p>
                   <strong><i class="fas fa-envelope-open-text"></i> Preview Text</strong><br />
-                  <small>(The text below the subject line)</small><br />
-                  This is the text that will be shown in an email client when showing a preview of the email.
+                  This text appears below the subject line in email inboxes. It gives recipients a quick preview of what's inside before they open your newsletter.
                 </p>
               </span></span
             >
@@ -437,13 +436,11 @@
               ><span class="card-title-help" style="width: 300px">
                 <p>
                   <strong><i class="fas fa-mail-bulk"></i> Load Multiple Posts</strong><br />
-                  This will load in multiple blog posts from your website.<br />
-                  Make sure to use your Blog <strong>Page's</strong> URL
+                  Enter your blog page URL to import several posts at once. Use the main blog page address, not individual article links.
                 </p>
                 <p>
                   <strong><i class="fas fa-envelope"></i> Load Individual Posts</strong><br />
-                  This will load in a single blog post from your website.<br />
-                  Make sure to use your Blog <strong>Post's</strong> URL
+                  Enter a specific article URL to import just one post.
                 </p>
 
                 <p>
@@ -537,8 +534,8 @@
             ><span class="card-title-help" style="width: 350px">
               <p>
                 <strong>Using the template?</strong><br />
-                When using the template you will need to pay attention to the Trade Name/OBA/name field. If you're using your name you will need to ensure you accompany it with your title and legal entity.</p>
-                <p><strong>Note:</strong><br>When signing off with your own name, please use a soft line-break (Hold Shift and press Enter) to produce the example below:<br>Your Name<br>Investment Advisor, Manulife Wealth Inc.
+                When adding your name, always include your title and legal entity (e.g., "Investment Advisor, Manulife Wealth Inc.").</p>
+                <p><strong>Formatting Tip:</strong><br>To keep your signature on separate lines, hold <strong>Shift + Enter</strong> between each line:<br><br>Your Name<br>Investment Advisor, Manulife Wealth Inc.
               </p>
             </span></span
           >
@@ -709,7 +706,7 @@
               ><span class="card-title-help" style="width: 200px">
                 <p>
                   <strong><i class="fas fa-palette"></i> Colour Settings</strong><br />
-                  These settings will affect all posts, but individual post colours can also be set per post in the Edit tab
+                  These colours apply to all posts by default. You can customize individual post colours in the Edit tab if needed.
                 </p>
               </span></span
             >
@@ -774,11 +771,11 @@
               ><span class="card-title-help" style="width: 300px">
                 <p>
                   <strong><i class="fas fa-pen-fancy"></i> Style Settings</strong><br />
-                  These settings will affect all posts, but individual post styles can also be set per post in the Edit tab
+                  These styles apply to all posts by default. You can customize individual post styles in the Edit tab if needed.
                 </p>
                 <p>
-                  <strong><i class="fas fa-border-style"></i> Border Radius(Rounded)</strong><br />
-                  Due to Outlook's limitations, this will not be displayed in Outlook for Desktop or Web.
+                  <strong><i class="fas fa-border-style"></i> Rounded Corners</strong><br />
+                  Note: Rounded corners won't appear in Outlook due to email client limitations, but will display in most other email programs.
                 </p>
               </span></span
             >
@@ -821,18 +818,6 @@
           <div class="card">
             <h3 class="card-title">Edit Newsletter</h3>
             <span class="card-title-icon" title="Add Custom Post" @click="addPost"><i class="far fa-plus-square tool-icon"></i></span>
-            <span class="card-title-icon" style="right: 50px"
-              ><i class="fas fa-question-circle tool-icon"></i
-              ><span class="card-title-help" style="width: 200px">
-                <p>
-                  <strong><i class="fa fa-image"></i> Looking for some images to use?</strong><br />Try SiteForward's image bank:<br /><a
-                    href="https://siteforward.ca/tools/image-bank"
-                    target="_blank"
-                    >https://siteforward.ca/tools/image-bank</a
-                  >
-                </p>
-              </span></span
-            >
             <div class="edit-newsletter">
               <ul class="newsletter-list">
                 <li v-if="posts.length == 0">
@@ -1034,7 +1019,7 @@
             </p>
             <span class="card-title-icon"
               ><i class="fas fa-question-circle tool-icon"></i
-              ><span class="card-title-help" style="width: 200px"> Google Analytics on Newsletters is still being tested, and may not work as intended. </span></span
+              ><span class="card-title-help" style="width: 200px"> <strong>Experimental Feature:</strong><br>Newsletter analytics tracking is currently in testing. Results may not be fully accurate yet. </span></span
             >
             <div class="form-item border">
               <input type="text" id="analytics-code" v-model="settings.analytics.code" required title=" " />
@@ -1068,13 +1053,12 @@
                 <p>
                   <strong><i class="fas fa-download"></i> Local <small>(Web browser)</small></strong
                   ><br />
-                  This will load/save the newsletter into your web browser's local storage.<br />
-                  Clearing your browser's cache will delete this saved version.
+                  Saves your newsletter in your browser. Quick and easy, but will be deleted if you clear your browser cache.
                 </p>
                 <p>
                   <strong><i class="fas fa-file-download"></i> File <small>(JSON file)</small></strong
                   ><br />
-                  This will load/save the newsletter into a .json file that can be moved and saved on your computer
+                  Downloads your newsletter as a file you can save anywhere on your computer for long-term storage and sharing.
                 </p>
               </span></span
             >
@@ -1129,21 +1113,21 @@
             <span class="card-title-icon"
               ><i class="fas fa-question-circle tool-icon"></i
               ><span class="card-title-help" style="width: 400px">
-                <p><strong>Important Note:</strong><br>If you're using this tool to create newsletters that involve dealer content please make sure to submit the final version to Sales Communication for review through Red Oak.</p>
+                <p><strong>⚠️ Compliance Reminder:</strong><br>If your newsletter includes dealer content, submit it to Sales Communication for review through Red Oak before sending.</p>
                 <p>
                   <strong><i class="fas fa-code"></i> Copy HTML Code</strong><br />
-                  Use this if you need to paste the HTML code into something that allows for code.
+                  For pasting into email platforms that accept HTML code.
                 </p>
                 <p>
                   <strong><i class="fas fa-paste"></i> Copy Newsletter</strong><br />
-                  Use this if you need to paste the Newsletter into something like MS Outlook.
+                  For pasting directly into email programs like Outlook (no code knowledge needed).
                 </p>
                 <p>
                   <strong><i class="fas fa-file-download"></i> Download Preview</strong><br />
-                  Use this if you need to download the Newsletter as an HTML file.
+                  Saves as an HTML file you can open in any web browser.
                 </p><p>
-                  <strong><i class="fas fa-file-download"></i> Download PDF</strong><br />
-                  Use this if you need to download a preview for Compliance.
+                  <strong><i class="fas fa-file-pdf"></i> Download PDF</strong><br />
+                  Creates a PDF version for compliance review or sharing.
                 </p>
               </span></span
             >
