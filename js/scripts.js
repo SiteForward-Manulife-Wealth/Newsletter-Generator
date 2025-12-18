@@ -962,7 +962,9 @@ const app = new Vue({
       
       try {
         sendInfo("Loading Posts");
-        const data = await fetchWithFallback(`${url}/feed.xml`);
+        // Remove trailing slash from URL to prevent double slashes
+        const cleanUrl = url.replace(/\/$/, '');
+        const data = await fetchWithFallback(`${cleanUrl}/feed.xml`);
         const doc = new DOMParser().parseFromString(data, "application/xml");
         
         // Check for XML parsing errors
