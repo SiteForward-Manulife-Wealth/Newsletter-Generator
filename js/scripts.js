@@ -772,8 +772,9 @@ const app = new Vue({
     // },
     //Load posts
     loadPosts(posts) {
-      if ((!posts || posts.target) && localStorage.posts)
-        posts = JSON.parse(localStorage.posts);
+      const storedPosts = safeLocalStorageGet('posts');
+      if ((!posts || posts.target) && storedPosts)
+        posts = JSON.parse(storedPosts);
 
       if (!posts || posts.target) sendError("Unable to load posts");
       else {
@@ -807,8 +808,9 @@ const app = new Vue({
     },
 
     loadNewsletter(file) {
-      if ((!file || file.target) && localStorage.newsletter)
-        file = JSON.parse(localStorage.newsletter);
+      const storedNewsletter = safeLocalStorageGet('newsletter');
+      if ((!file || file.target) && storedNewsletter)
+        file = JSON.parse(storedNewsletter);
       if (!file || file.target) sendError("Unable to load newsletter");
       else {
         if (file.options.loadPosts)
@@ -836,15 +838,17 @@ const app = new Vue({
     //Save Posts and Options
     saveNewsletter(overwrite) {
       if (overwrite == null || overwrite == undefined) overwrite = false;
-      if (!overwrite && localStorage.getItem("newsletter"))
+      const storedNewsletter = safeLocalStorageGet("newsletter");
+      if (!overwrite && storedNewsletter)
         if (
           !confirm("Do you want to overwrite your currently saved newsletter?")
         ) {
           sendInfo("Didn't Save Newsletter");
           return;
         }
-      localStorage.setItem("newsletter", this.newsletterAsJSON());
-      sendSuccess("Newsletter Saved");
+      if (safeLocalStorageSet("newsletter", this.newsletterAsJSON())) {
+        sendSuccess("Newsletter Saved");
+      }
     },
 
     //! Doesn't work cause it can't load images
@@ -935,9 +939,17 @@ const app = new Vue({
 
     //Load posts from blog page url
     async loadPostsFromURL() {
-      const url = this.$refs.loadPosts.value;
+      let url = this.$refs.loadPosts.value;
       if (!url || url.length < 0) {
         sendError("Invalid load Page's URL");
+        return;
+      }
+      
+      // Validate URL format
+      try {
+        url = validateFetchURL(url);
+      } catch (error) {
+        sendError(error.message);
         return;
       }
       
@@ -950,63 +962,89 @@ const app = new Vue({
       
       try {
         sendInfo("Loading Posts");
-        const response = await fetch(`${url}/feed.xml`);
-        const data = await response.text();
+        const data = await fetchWithCorsProxy(`${url}/feed.xml`);
         const doc = new DOMParser().parseFromString(data, "application/xml");
+        
+        // Check for XML parsing errors
+        const parserError = doc.querySelector("parsererror");
+        if (parserError) {
+          throw new Error("Invalid XML format in RSS feed");
+        }
         
         //Search through the XML for the nodes
         const channels = doc.querySelector("channel");
+        if (!channels) {
+          throw new Error("No channel found in RSS feed");
+        }
+        
         const items = channels.querySelectorAll("item");
+        if (!items || items.length === 0) {
+          throw new Error("No posts found in RSS feed");
+        }
+        
         const maxCount = this.$refs.loadPostsCount.value;
 
         //For every blog found get the values and create a blog item
         items.forEach((item, i) => {
           if (i < maxCount) {
-            const post = { style: {} };
-            //Remove the prefix of the node values
-            let title = item.querySelector("title").innerHTML;
-            const titlePrefix = "<![CDATA[";
+            try {
+              const post = { style: {} };
+              //Remove the prefix of the node values
+              const titleElement = item.querySelector("title");
+              if (!titleElement) return;
+              
+              let title = titleElement.innerHTML;
+              const titlePrefix = "<![CDATA[";
 
-            title = title.substr(
-              titlePrefix.length,
-              title.length - 3 - titlePrefix.length
-            );
-            const link = item.querySelector("link").innerHTML;
-            let img = item.getElementsByTagName("media:thumbnail")[0];
-            if (img) img = img.attributes[0].nodeValue;
-            let desc = item.querySelector("description");
-            if (desc) {
-              desc = desc.innerHTML;
-              desc = desc.substr(
+              title = title.substr(
                 titlePrefix.length,
-                desc.length - 3 - titlePrefix.length
+                title.length - 3 - titlePrefix.length
               );
-            }
+              
+              const linkElement = item.querySelector("link");
+              const link = linkElement ? linkElement.innerHTML : "";
+              
+              let img = item.getElementsByTagName("media:thumbnail")[0];
+              if (img) img = img.attributes[0].nodeValue;
+              
+              let desc = item.querySelector("description");
+              if (desc) {
+                desc = desc.innerHTML;
+                desc = desc.substr(
+                  titlePrefix.length,
+                  desc.length - 3 - titlePrefix.length
+                );
+              }
 
-            //Format the date
-            let date = item.querySelector("pubDate").innerHTML;
-            if (date) {
-              date = date.split(" ");
-              date = date.slice(0, 4);
-              date = date.join(" ");
-            }
+              //Format the date
+              const dateElement = item.querySelector("pubDate");
+              let date = dateElement ? dateElement.innerHTML : "";
+              if (date) {
+                date = date.split(" ");
+                date = date.slice(0, 4);
+                date = date.join(" ");
+              }
 
-            //Create the blog post item, and add it to the list
-            post.title = `<h2>${title}</h2>`;
-            post.date = `<p>${date}</p>`;
-            post.link = link;
-            post.img = img;
-            post.desc = `<p>${desc}</p>`;
-            this.posts.push(post);
+              //Create the blog post item, and add it to the list (sanitized)
+              post.title = `<h2>${sanitizeHTML(title)}</h2>`;
+              post.date = `<p>${sanitizeHTML(date)}</p>`;
+              post.link = sanitizeHTML(link);
+              post.img = img ? sanitizeHTML(img) : null;
+              post.desc = `<p>${sanitizeHTML(desc)}</p>`;
+              this.posts.push(post);
+            } catch (itemError) {
+              console.error("Error parsing RSS item:", itemError);
+              // Continue with next item
+            }
           }
         });
 
         //Inform user if posts were found
-        if (items.length > 0) sendSuccess("Loaded Posts");
-        else
-          sendError(
-            "No posts were found, make sure you're not using the RSS Feed"
-          );
+        if (this.posts.length > 0) {
+          sendSuccess(`Loaded ${this.posts.length} post(s)`);
+        } else {
+          sendError("No posts were found, make sure you're not using the RSS Feed");
+        }
 
         //Send call to Google Analytics
         gtag("event", "Page", {
@@ -1024,9 +1062,17 @@ const app = new Vue({
     // Load single blog post
     //TODO: Add a way to load blog post similar to how twitter would share the page, look for title, desc, and thumbnail
     async loadPostFromURL() {
-      const url = this.$refs.loadPost.value;
+      let url = this.$refs.loadPost.value;
       if (!url || url.length < 0) {
         sendError("Invalid load Page's URL");
+        return;
+      }
+      
+      // Validate URL format
+      try {
+        url = validateFetchURL(url);
+      } catch (error) {
+        sendError(error.message);
         return;
       }
       
@@ -1039,13 +1085,17 @@ const app = new Vue({
       
       try {
         sendInfo("Loading Posts");
-        const response = await fetch(url);
-        const data = await response.text();
+        const data = await fetchWithCorsProxy(url);
         const post = { style: {} };
         const doc = new DOMParser().parseFromString(data, "text/html");
 
         //See if the description can be found
-        const tags = doc.querySelector(".post-content").querySelectorAll("*");
+        const postContent = doc.querySelector(".post-content");
+        if (!postContent) {
+          throw new Error("Could not find post content on page");
+        }
+        
+        const tags = postContent.querySelectorAll("*");
         let p = "";
         for (let i = 0; i < tags.length; i++) {
           if (
@@ -1067,36 +1117,51 @@ const app = new Vue({
         if (desc && desc[desc.length - 1].match(/\W/g))
           desc = desc.substr(0, desc.length - 1);
         if (desc) desc += "...";
-        post.desc = `<p>${desc}</p>`;
+        post.desc = `<p>${sanitizeHTML(desc)}</p>`;
 
-        //Get the rest of the values as they will be found
-        post.title = `<h2>${doc.querySelector(".post").querySelector(".post-title").innerHTML}</h2>`;
-        post.link = url;
-        if (
-          doc.querySelector(".post").querySelector(".post-meta") &&
-          doc
-            .querySelector(".post")
-            .querySelector(".post-meta")
-            .querySelector("time")
-        )
-          post.date = `<p>${doc.querySelector(".post").querySelector(".post-meta").querySelector("time").innerHTML}</p>`;
+        //Get the rest of the values as they will be found (sanitized)
+        const postElement = doc.querySelector(".post");
+        if (!postElement) {
+          throw new Error("Could not find post element on page");
+        }
+        
+        const postTitleElement = postElement.querySelector(".post-title");
+        if (!postTitleElement) {
+          throw new Error("Could not find post title on page");
+        }
+        
+        const postTitle = postTitleElement.innerHTML;
+        post.title = `<h2>${sanitizeHTML(postTitle)}</h2>`;
+        post.link = sanitizeHTML(url);
+        
+        const postMeta = postElement.querySelector(".post-meta");
+        if (postMeta) {
+          const timeElement = postMeta.querySelector("time");
+          if (timeElement) {
+            const postDate = timeElement.innerHTML;
+            post.date = `<p>${sanitizeHTML(postDate)}</p>`;
+          }
+        }
 
         //Check for a thumbnail
-        if (doc.querySelector(".post").querySelector(".bg"))
-          post.img = doc
-            .querySelector(".post")
-            .querySelector(".bg")
-            .style.backgroundImage.replace('url("', "")
+        const bgElement = postElement.querySelector(".bg");
+        if (bgElement) {
+          post.img = bgElement.style.backgroundImage
+            .replace('url("', "")
             .replace('")', "");
-        if (doc.querySelector(".post").querySelector(".post-thumbnail"))
-          post.img = doc
-            .querySelector(".post")
-            .querySelector(".post-thumbnail")
-            .querySelector("img").src;
+        }
+        
+        const thumbnailElement = postElement.querySelector(".post-thumbnail");
+        if (thumbnailElement) {
+          const imgElement = thumbnailElement.querySelector("img");
+          if (imgElement) {
+            post.img = imgElement.src;
+          }
+        }
 
         this.posts.push(post);
 
-        sendSuccess("Loaded Posts");
+        sendSuccess("Loaded Post");
 
         //Send google analytics call
         gtag("event", "Post", {
@@ -1122,9 +1187,17 @@ const app = new Vue({
       let websiteURL = this.$refs.analyticsWebURL.value;
       if (websiteURL.indexOf("http") !== 0) websiteURL = `https://${websiteURL}`;
       
+      // Validate URL format
       try {
-        const response = await fetch(websiteURL);
-        const data = await response.text();
+        websiteURL = validateFetchURL(websiteURL);
+      } catch (error) {
+        sendError(error.message);
+        this.loading.analytics = false;
+        return;
+      }
+      
+      try {
+        const data = await fetchWithCorsProxy(websiteURL);
         
         //Look for analytics code
         const analyticsCode = data.match(/UA-\w*-1/g);
@@ -1483,6 +1556,98 @@ function sendInfo(msg) {
   console.log(`Info: ${msg}`);
 }
 
+//Sanitize HTML content using DOMPurify
+function sanitizeHTML(html) {
+  if (typeof DOMPurify !== 'undefined') {
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 'strong', 'em', 'u', 'br', 'span', 'div', 'img', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'tbody', 'thead'],
+      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'style', 'class', 'target', 'width', 'height', 'align']
+    });
+  }
+  return html; // Fallback if DOMPurify not loaded
+}
+
+//Validate URL format
+function isValidURL(string) {
+  try {
+    const url = new URL(string);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch (_) {
+    return false;
+  }
+}
+
+//Validate and sanitize URL for fetch requests
+function validateFetchURL(url) {
+  if (!url || typeof url !== 'string') {
+    throw new Error('Invalid URL provided');
+  }
+  
+  // Trim whitespace
+  url = url.trim();
+  
+  // Check if valid URL
+  if (!isValidURL(url)) {
+    throw new Error('URL must be a valid HTTP or HTTPS address');
+  }
+  
+  return url;
+}
+
+//Fetch with timeout
+function fetchWithTimeout(url, options = {}, timeout = 10000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout')), timeout)
+    )
+  ]);
+}
+
+//Fetch with CORS bypass using AllOrigins proxy
+async function fetchWithCorsProxy(url, timeout = 15000) {
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const response = await fetchWithTimeout(proxyUrl, {}, timeout);
+  
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  
+  const jsonData = await response.json();
+  return jsonData.contents;
+}
+
+//Safe localStorage operations
+function safeLocalStorageGet(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (error) {
+    console.error('localStorage.getItem failed:', error);
+    return null;
+  }
+}
+
+function safeLocalStorageSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    console.error('localStorage.setItem failed:', error);
+    sendError('Unable to save to browser storage. You may be in private browsing mode.');
+    return false;
+  }
+}
+
+function safeLocalStorageRemove(key) {
+  try {
+    localStorage.removeItem(key);
+    return true;
+  } catch (error) {
+    console.error('localStorage.removeItem failed:', error);
+    return false;
+  }
+}
+
 //Add Splice to strings
 if (!String.prototype.splice) {
   String.prototype.splice = function (start, delCount, newSubStr) {
@@ -1505,8 +1670,8 @@ function getDataUrl(e, cb) {
   };
 
   img.setAttribute("crossOrigin", "Anonymous");
-  // Note: cors-anywhere.herokuapp.com is deprecated - this needs to be replaced
-  img.src = `https://cors-anywhere.herokuapp.com/${e.src}`;
+  // Using AllOrigins as CORS proxy
+  img.src = `https://api.allorigins.win/raw?url=${encodeURIComponent(e.src)}`;
 }
 
 function downloadInnerHtml(filename, elId, mimeType = "text/plain") {
