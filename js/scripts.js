@@ -375,7 +375,6 @@ const app = new Vue({
     app: {
       sidebarHover: false,
       sidebarStuck: false,
-      wordSupport: false,
       activeView: "setup",
       silentToggle: [],
       forceRerender: false,
@@ -493,12 +492,6 @@ const app = new Vue({
   watch: {
     "app.sidebarStuck": function () {
       document.dispatchEvent(updateResizeHandle);
-    },
-    "app.wordSupport": function () {
-      if (!this.app.silentToggle.includes("app.wordSupport"))
-        sendInfo(
-          "Word support turned " + (this.app.wordSupport ? "on" : "off")
-        );
     },
 
     //On view change
@@ -1335,24 +1328,6 @@ const app = new Vue({
         sendSuccess("Copied HTML Code");
     },
 
-    copyNewsletterWord() {
-      this.app.silentToggle.push("app.wordSupport");
-      if (!this.wordSupport) {
-        this.wordSupport = true;
-        setTimeout(function () {
-          this.copyNewsletter();
-          setTimeout(function () {
-            app.wordSupport = false;
-            setTimeout(function () {
-              app.app.silentToggle.splice(
-                app.app.silentToggle.indexOf("app.wordSupport"),
-                1
-              );
-            }, 1);
-          }, 1);
-        }, 1);
-      }
-    },
     resetStyles() {
       this.styles = JSON.parse(JSON.stringify(this.stylesBackup));
 

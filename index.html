@@ -80,17 +80,6 @@
             <p class="collapsed">Load / Save</p>
           </li>
         </ul>
-        <!-- <span class="sidebar-split"></span>
-            <ul class="sidebar-menu">
-                <li class="sidebar-item" :class="{active: app.activeView === 'analytics'}" @click="app.activeView = 'analytics'; scrollToTop()">
-                    <i class="fa fa-chart-pie fa-2x"></i>
-                    <p class="collapsed">Analytics</p>
-                </li>
-                <li class="sidebar-item" :class="{active: app.activeView === 'banner'}" @click="app.activeView = 'banner'; scrollToTop()">
-                    <i class="fa fa-image fa-2x"></i>
-                    <p class="collapsed">Custom Banner Creator</p>
-                </li>
-            </ul> -->
         <span class="sidebar-split"></span>
         <ul class="sidebar-menu">
           <li class="sidebar-item" :class="{active: app.activeView === 'settings'}" @click="app.activeView = 'settings'; scrollToTop()">
@@ -387,19 +376,6 @@
                     <tr class="newsletter-footer" v-else-if="settings.footer.style == '2'">
                       <td :style="{'background-color': styles.footer.backgroundColor}" valign="middle" style="padding: 20px; font-family: 'Muli', Helvetica, Arial, sans-serif;">
                         <div v-html="settings.footer.html" :style="{color: styles.footer.textColor}"></div>
-                      </td>
-                    </tr>
-
-                    <!-- ANALYTICS -->
-                    <tr v-if="analyticsEnabled">
-                      <td style="padding: 0; line-height: 0;">
-                        <img
-                          alt=""
-                          width="1"
-                          height="1"
-                          style="display: block; width: 1px; height: 1px; border: 0;"
-                          :src="'https://www.google-analytics.com/collect?v=1&tid='+settings.analytics.code+'&cid=555&t=event&ec=Email+Newsletter&ea=open&el='+settings.analytics.name"
-                        />
                       </td>
                     </tr>
                   </table>
@@ -1000,50 +976,6 @@
           </div>
         </div>
 
-        <div id="analytics" class="main-view" :class="{open: app.activeView === 'analytics'}">
-          <div class="card">
-            <h3 class="card-title">Find Google Analytics Code</h3>
-            <div class="form-item split border">
-              <div>
-                <input type="text" id="analyticsWebURL" ref="analyticsWebURL" required title=" " />
-                <label for="analyticsWebURL">Website URL</label>
-              </div>
-              <button @click="findAnalyticsCode"><i class="fas fa-search"></i> Find Code</button>
-            </div>
-          </div>
-          <div class="card">
-            <h3 class="card-title">Google Analytics</h3>
-            <p>
-              <strong><small>The Analytic's code will save automatically once added</small></strong
-              ><br />
-            </p>
-            <span class="card-title-icon"
-              ><i class="fas fa-question-circle tool-icon"></i
-              ><span class="card-title-help" style="width: 200px"> <strong>Experimental Feature:</strong><br>Newsletter analytics tracking is currently in testing. Results may not be fully accurate yet. </span></span
-            >
-            <div class="form-item border">
-              <input type="text" id="analytics-code" v-model="settings.analytics.code" required title=" " />
-              <label for="analytics-code">Analytics Code</label>
-            </div>
-            <div class="form-item border">
-              <input type="text" id="analytics-name" v-model="settings.analytics.name" required title=" " />
-              <label for="analytics-name">Newsletter Tracking Name</label>
-            </div>
-          </div>
-          <div class="card">
-            <h3 class="card-title">How To View Analytics?</h3>
-            <ol>
-              <li>
-                If you don't have access to your Google Analytics, please send our team at SiteForward an email requesting access<br /><small
-                  >Please include your Google Email in your request</small
-                >
-              </li>
-              <li>Open your Google Analytics Dashboard</li>
-              <li>Open your Events Overview tab<br /><small>Located under the Behaviour tab</small></li>
-            </ol>
-          </div>
-        </div>
-
         <div id="load" class="main-view" :class="{open: app.activeView === 'load'}">
           <div class="card">
             <h3 class="card-title">Newsletter Management</h3>
@@ -1296,24 +1228,6 @@
               <button @click="resetStyles()" style="margin: 0"><i class="fas fa-remove-format"></i> Reset Styles</button>
             </div>
           </div>
-
-          <div class="card">
-            <h3 class="card-title">Enable MS Word Support</h3>
-            <p>
-              <small
-                ><strong
-                  >This can cause issues if enabled and is being used in an email. <br />Microsoft Word was not the intended use of this generator so support for MS Word is
-                  <i>very</i> limited.
-                </strong>
-                <br /><br />After pasting the newsletter into MS Word right click on the inserted table, open table properties, go to columns, and unselect
-                <strong>Preferred Width</strong>. Then you can drag the column width manually to fit the image</small
-              >
-            </p>
-            <div class="form-item">
-              <input type="checkbox" v-model="app.wordSupport" id="enableWordSupport" />
-              <label for="enableWordSupport">Word Support</label>
-            </div>
-          </div>
         </div>
 
         <div id="help" class="main-view" :class="{open: app.activeView === 'help'}">
@@ -1326,6 +1240,35 @@
             </div>
           </div>
           <div id="helpCards">
+            <div class="card">
+              <h3 class="card-title">How to <strong>Load / Save</strong> the Newsletter Options & Posts</h3>
+              <p>
+                <strong><small>If a newsletter has been saved locally you'll receive a popup in the bottom right to quickly load it.</small></strong>
+              </p>
+              <ol>
+                <li>Go to the <strong>Load / Save</strong> tab</li>
+                <li>Choose how you want to load/save the newsletter</li>
+                <li style="list-style: none">
+                  <ul>
+                    <li><strong>Local</strong> will let you load/save the newsletter in your web browser.</li>
+                    <li style="list-style: none">
+                      <ul style="list-style-type: square">
+                        <li><strong>Save the newsletter</strong> will save the newsletter in your web browser.</li>
+                        <li><strong>Load the newsletter</strong> will load the newsletter from your web browser.</li>
+                      </ul>
+                    </li>
+                    <li><strong>File</strong> will let you load/save the newsletter in a JSON file.</li>
+                    <li style="list-style: none">
+                      <ul style="list-style-type: square">
+                        <li><strong>Save the newsletter</strong> will save the newsletter in a JSON file.</li>
+                        <li><strong>Load the newsletter</strong> will load the newsletter from a JSON file.</li>
+                      </ul>
+                    </li>
+                    <li><strong>Legacy</strong> only use this if you need to load/save with separate JSON files<br /><small>(No longer supported)</small></li>
+                  </ul>
+                </li>
+              </ol>
+            </div>
             <div class="card">
               <h3 class="card-title">How to <strong>Setup</strong> the Newsletter</h3>
               <p>
@@ -1445,38 +1388,37 @@
               </div>
             </div>
             <div class="card">
-              <h3 class="card-title">How to use <strong>Analytics</strong> with the Newsletter</h3>
+              <h3 class="card-title">How to <strong>Submit</strong> for Compliance Review</h3>
               <p>
-                <strong><small>View the Analytics tab for more information on how to view the analytics</small></strong>
+                <strong><small>Always save your newsletter before submitting for compliance review, as the review process may take time.</small></strong>
               </p>
               <ol>
-                <li>Go to the <strong>Analytics</strong> tab</li>
-                <li>Find your Google Analytics Code by entering your website's URL and clicking <strong>Find Code</strong></li>
-                <li>
-                  Enter your Newsletter's name
-                  <small>(This can be something simliar to: Winter 2019)</small>
+                <li>Go to the <strong>Use Newsletter</strong> tab and click <strong>Download PDF</strong></li>
+                <li style="list-style: none">
+                  <ul style="list-style-type: square">
+                    <li>This creates a PDF version for compliance review</li>
+                  </ul>
                 </li>
-              </ol>
-            </div>
-            <div class="card">
-              <h3 class="card-title">How To View Analytics?</h3>
-              <ol>
-                <li>
-                  If you don't have access to your Google Analytics, please send our team at SiteForward an email requesting access<br /><small
-                    >Please include your Google Email in your request</small
-                  >
+                <li>Go to the <strong>Load / Save</strong> tab and save your newsletter</li>
+                <li style="list-style: none">
+                  <ul style="list-style-type: square">
+                    <li>You'll need to come back to make changes after the review</li>
+                    <li>Save locally (browser) or as a file on your computer</li>
+                  </ul>
                 </li>
-                <li>Open your Google Analytics Dashboard</li>
-                <li>Open your Events Overview tab<br /><small>Located under the Behaviour tab</small></li>
+                <li>Submit the PDF for compliance review in RedOak</li>
+                <li>Make any required compliance changes</li>
+                <li style="list-style: none">
+                  <ul style="list-style-type: square">
+                    <li>If you closed the page, reload your saved newsletter from the <strong>Load / Save</strong> tab</li>
+                    <li>Edit your newsletter as needed in the <strong>Edit Items</strong> tab</li>
+                  </ul>
+                </li>
+                <li>Once approved, you can use the newsletter from the <strong>Use Newsletter</strong> tab</li>
               </ol>
             </div>
             <div class="card">
               <h3 class="card-title">How to <strong>Use</strong> the Newsletter</h3>
-              <p>
-                <strong
-                  ><small>If you're planning to use the newsletter in MS Word make sure to enable MS Word Support in the Settings tab in the newsletter generator</small></strong
-                >
-              </p>
               <ol>
                 <li>Go to the <strong>Use Newsletter</strong> tab</li>
                 <li><strong>Copy Code</strong> will copy the code to your clipboard</li>
@@ -1494,35 +1436,6 @@
                   </ul>
                 </li>
                 <li>Paste the newsletter/code to where you need it</li>
-              </ol>
-            </div>
-            <div class="card">
-              <h3 class="card-title">How to <strong>Load / Save</strong> the Newsletter Options & Posts</h3>
-              <p>
-                <strong><small>If a newsletter has been saved locally you'll recieve a popup in the bottom right to quickly load it.</small></strong>
-              </p>
-              <ol>
-                <li>Go to the <strong>Load / Save</strong> tab</li>
-                <li>Choose how you want to load/save the newsletter</li>
-                <li style="list-style: none">
-                  <ul>
-                    <li><strong>Local</strong> will let you load/save the newsletter in your web browser.</li>
-                    <li style="list-style: none">
-                      <ul style="list-style-type: square">
-                        <li><strong>Save the newsletter</strong> will save the newsletter in your web browser.</li>
-                        <li><strong>Load the newsletter</strong> will load the newsletter from your web browser.</li>
-                      </ul>
-                    </li>
-                    <li><strong>File</strong> will let you load/save the newsletter in a JSON file.</li>
-                    <li style="list-style: none">
-                      <ul style="list-style-type: square">
-                        <li><strong>Save the newsletter</strong> will save the newsletter in a JSON file.</li>
-                        <li><strong>Load the newsletter</strong> will load the newsletter from a JSON file.</li>
-                      </ul>
-                    </li>
-                    <li><strong>Legacy</strong> only use this if you need to load/save with seperate JSON files<br /><small>(No longer supported)</small></li>
-                  </ul>
-                </li>
               </ol>
             </div>
             <!-- <div class="card">
