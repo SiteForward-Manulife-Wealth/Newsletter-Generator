@@ -65,15 +65,20 @@ Vue.component("editable", {
       this.initTimeout = setTimeout(() => {
         const el = this.$el;
         if (tinymce.get(el.id) === null) {
-          const tinyMCE_settings_clone = Object.assign({}, tinyMCE_settings);
-          tinyMCE_settings_clone.selector = `#${el.id}`;
-          
-          // Add initialization callback to track state
-          tinyMCE_settings_clone.init_instance_callback = (editor) => {
-            this.editorInitialized = true;
-          };
-          
-          tinymce.init(tinyMCE_settings_clone);
+          try {
+            const tinyMCE_settings_clone = Object.assign({}, tinyMCE_settings);
+            tinyMCE_settings_clone.selector = `#${el.id}`;
+            
+            // Add initialization callback to track state
+            tinyMCE_settings_clone.init_instance_callback = (editor) => {
+              this.editorInitialized = true;
+            };
+            
+            tinymce.init(tinyMCE_settings_clone);
+          } catch (error) {
+            // Silently fail if TinyMCE initialization fails
+            this.editorInitialized = false;
+          }
         }
         this.initTimeout = null;
       }, 100); // 100ms debounce
@@ -94,17 +99,25 @@ Vue.component("editable", {
     // Clear any pending initialization
     if (this.initTimeout) {
       clearTimeout(this.initTimeout);
+      this.initTimeout = null;
     }
     
     // Remove event listener if it still exists
-    if (this.mouseoverHandler) {
+    if (this.mouseoverHandler && this.$el) {
       this.$el.removeEventListener("mouseover", this.mouseoverHandler);
+      this.mouseoverHandler = null;
     }
     
     // Destroy TinyMCE editor instance
-    const editor = tinymce.get(this.$el.id);
-    if (editor) {
-      editor.remove();
+    if (this.$el && this.$el.id) {
+      try {
+        const editor = tinymce.get(this.$el.id);
+        if (editor) {
+          editor.remove();
+        }
+      } catch (error) {
+        // Silently fail if editor removal fails
+      }
     }
     
     this.editorInitialized = false;
@@ -182,6 +195,10 @@ Vue.component("slider", {
       //Emit input event to trigger v-model
       this.$emit("input", this.val);
     },
+  },
+  beforeDestroy() {
+    // Clear any cached DOM references
+    this.val = 0;
   },
 });
 
@@ -266,6 +283,10 @@ Vue.component("searchbar", {
         }
       }
     },
+  },
+  beforeDestroy() {
+    // Clear cached references
+    this.defaultHTML = null;
   },
 });
 
