@@ -168,28 +168,22 @@ app.loadPostsFromURL()
               Memory Released
 ```
 
-## File Size Comparison
+## Module Size Distribution
 
 ```
-Before Modularization:
+Largest Module:
 ┌────────────────────────────────────────┐
-│ scripts.js: ~1800 lines                │
-│ ████████████████████████████████████   │
-└────────────────────────────────────────┘
-
-After Modularization:
-┌────────────────────────────────────────┐
-│ Largest file (app.js): ~450 lines      │
+│ app.js: ~800 lines (main application)   │
 │ █████████                              │
 ├────────────────────────────────────────┤
-│ Average file size: ~100 lines          │
+│ Average module: ~100 lines              │
 │ ██                                     │
 ├────────────────────────────────────────┤
-│ Smallest file: ~25 lines               │
+│ Smallest modules: ~25 lines             │
 │ █                                      │
 └────────────────────────────────────────┘
 
-Result: 75% reduction in largest file size!
+Focused modules keep code manageable and testable!
 ```
 
 ## Module Reusability
@@ -300,22 +294,10 @@ Step 5: Application (depends on all)
 ⚠️  Loading out of order will cause errors!
 ```
 
-## Benefits Visualization
+## Architecture Benefits
 
 ```
-BEFORE: Monolithic Structure
-┌────────────────────────────────┐
-│                                │
-│    Everything in one file      │
-│    Hard to navigate            │
-│    Difficult to test           │
-│    Complex dependencies        │
-│    Poor organization           │
-│                                │
-└────────────────────────────────┘
-        ⬇️  Refactored  ⬇️
-
-AFTER: Modular Structure
+Modular Structure:
 ┌──────┐ ┌──────┐ ┌──────┐
 │Config│ │Utils │ │Srvcs │
 └──┬───┘ └──┬───┘ └──┬───┘
@@ -338,8 +320,8 @@ AFTER: Modular Structure
 ---
 
 This architecture provides:
-- ✅ **Clear Separation of Concerns**
-- ✅ **Predictable Data Flow**
-- ✅ **Easy Testing**
-- ✅ **Maintainable Code**
-- ✅ **Scalable Structure**
+- ✅ **Clear Separation of Concerns** - Each module has a focused responsibility
+- ✅ **Predictable Data Flow** - Unidirectional dependencies from app to services/utils
+- ✅ **Easy Testing** - Pure functions and isolated modules
+- ✅ **Maintainable Code** - Organized structure with clear boundaries
+- ✅ **Scalable Structure** - Easy to add new features in appropriate modules
