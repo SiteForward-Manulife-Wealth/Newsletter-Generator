@@ -874,6 +874,13 @@ input::-webkit-inner-spin-button {
 
 .form-item .editable {
     margin: 0;
+    display: block;
+    min-height: 18px;
+}
+
+.form-item .editable:focus~label,
+.form-item .editable:not(:empty)~label {
+    pointer-events: none;
 }
 
 
