@@ -1,7 +1,7 @@
 # Newsletter Generator - Modularization Documentation
 
 ## Overview
-The Newsletter Generator uses a modular architecture with 15 focused modules organized by functionality. This structure improves code maintainability, testability, and organization.
+The Newsletter Generator uses a modular architecture with 14 focused modules organized by functionality. This structure improves code maintainability, testability, and organization.
 
 ## File Structure
 
@@ -15,8 +15,7 @@ js/
 │   ├── editable.js                # TinyMCE wrapper component
 │   ├── popup.js                   # Modal/popup dialog component
 │   ├── slider.js                  # Range slider component
-│   ├── searchbar.js               # Search and filter component
-│   └── resizehandle.js            # Draggable resize handle
+│   └── searchbar.js               # Search and filter component
 ├── services/
 │   ├── api-service.js             # Network requests and CORS handling
 │   ├── storage-service.js         # localStorage operations
@@ -148,10 +147,6 @@ All utilities and services are now standalone functions that can be:
 #### `components/searchbar.js`
 - Search and filter functionality
 - Highlight matching text
-
-#### `components/resizehandle.js`
-- Draggable resize handle for panels
-- Mouse event handling
 
 ### Main Application
 

@@ -36,7 +36,6 @@
                     │ popup.js     │
                     │ slider.js    │
                     │ searchbar.js │
-                    │ resizehandle │
                     └──────────────┘
                              │
                              ▼
@@ -286,7 +285,6 @@ Step 4: Components (depend on config)
    └─> popup.js
    └─> slider.js
    └─> searchbar.js
-   └─> resizehandle.js
 
 Step 5: Application (depends on all)
    └─> app.js

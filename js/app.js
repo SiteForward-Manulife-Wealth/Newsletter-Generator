@@ -114,15 +114,13 @@ const app = new Vue({
   },
   watch: {
     "app.sidebarStuck": function () {
-      document.dispatchEvent(updateResizeHandle);
+      // Sidebar stuck state changed
     },
 
     //On view change
     "app.activeView": function () {
       let activeView = this.app.activeView,
         preview = this.$refs.preview;
-
-      document.dispatchEvent(updateResizeHandle);
 
       setTimeout(function () {
         //If changed to any of the following close the preview window
