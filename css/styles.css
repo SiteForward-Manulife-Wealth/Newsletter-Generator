@@ -347,6 +347,7 @@ p.smallerText {
     flex-flow: column nowrap;
     z-index: 99;
     padding-bottom: var(--spacing-xl);
+    overflow: hidden;
 }
 
 #sidebar.open {
@@ -357,7 +358,7 @@ p.smallerText {
     position: relative;
     left: -300px;
     opacity: 0;
-    transition: all .45s;
+    transition: left .45s, opacity .45s .15s;
 }
 
 #sidebar.open .collapsed {
@@ -414,6 +415,7 @@ p.smallerText {
     flex-flow: row nowrap;
     border-radius: var(--border-radius-md);
     transition: background-color .2s;
+    overflow: hidden;
 }
 
 .sidebar-item:hover {
